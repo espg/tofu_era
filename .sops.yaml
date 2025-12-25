@@ -1,0 +1,19 @@
+# SOPS configuration for encrypting secrets
+# Uses AWS KMS for encryption
+
+creation_rules:
+
+  # meseeks environment secrets (us-west-2)
+  - path_regex: environments/meseeks/secrets\.yaml$
+    kms: arn:aws:kms:us-west-2:429435741471:alias/sops-jupyterhub-meseeks-usw2
+    aws_profile: ""
+
+  # Englacial environment secrets (us-west-2)
+  - path_regex: environments/englacial/secrets\.yaml$
+    kms: arn:aws:kms:us-west-2:429435741471:alias/sops-jupyterhub-englacial-usw2
+    aws_profile: ""
+
+  # Englacial-Test environment secrets (us-west-2)
+  - path_regex: environments/englacial-test/secrets\.yaml$
+    kms: arn:aws:kms:us-west-2:429435741471:alias/sops-jupyterhub-englacial-test-usw2
+    aws_profile: ""
