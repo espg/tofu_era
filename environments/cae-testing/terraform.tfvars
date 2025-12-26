@@ -93,16 +93,18 @@ dask_worker_memory_max = 8
 dask_cluster_max_cores = 10
 
 # Container Image
-# Using py-rocket-base which includes VSCode (code-server), RStudio, and Desktop
-# Based on Pangeo stack - see https://github.com/nmfs-opensci/py-rocket-base
-singleuser_image_name = "ghcr.io/nmfs-opensci/py-rocket-base"
+# Custom CAE image based on py-rocket-base with:
+# - VSCode (code-server), RStudio, Desktop from py-rocket-base
+# - Dedicated "cae" conda environment with full pangeo stack + climakitae
+# - "cae" kernel set as default for new notebooks
+# See: docker/Dockerfile.cae and docs/CONTAINER_REGISTRY.md
+singleuser_image_name = "ghcr.io/espg/cae-notebook"
 singleuser_image_tag  = "latest"
 
-# Lifecycle Hooks - Fix VSCode Jupyter kernel path
-# py-rocket-base uses /srv/conda/bin/python but ipykernel is in /srv/conda/envs/notebook
-# Installing ipykernel in base conda makes VSCode Jupyter notebooks work
-lifecycle_hooks_enabled      = true
-lifecycle_post_start_command = ["sh", "-c", "/srv/conda/bin/pip install ipykernel"]
+# Lifecycle Hooks - DISABLED (all dependencies baked into image)
+# The cae kernel includes climakitae, boto3, and full pangeo stack
+lifecycle_hooks_enabled      = false
+lifecycle_post_start_command = ["sh", "-c", "echo 'Dependencies pre-installed in cae kernel'"]
 
 # Idle Timeouts - Very aggressive for testing
 kernel_cull_timeout = 300 # 5 minutes

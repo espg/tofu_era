@@ -1,0 +1,167 @@
+# CAE Conda Environment
+# Full Pangeo stack + climakitae for Cal-Adapt Analytics Engine
+#
+# Based on: https://github.com/pangeo-data/pangeo-docker-images/blob/master/pangeo-notebook/environment.yml
+# With additions for climakitae and CAE-specific packages
+#
+# This environment is installed as a Jupyter kernel named "cae"
+
+name: cae
+channels:
+  - conda-forge
+dependencies:
+  # =============================================================================
+  # Core Python
+  # =============================================================================
+  - python=3.11
+  - ipykernel
+  - ipython
+
+  # =============================================================================
+  # Jupyter ecosystem
+  # =============================================================================
+  - jupyter-book
+  - jupyter-resource-usage
+  - jupyter_scheduler
+  - jupyterlab>=4
+  - jupyterlab-favorites
+  - jupyterlab-geojson
+  - jupyterlab-git
+  - jupyterlab-h5web
+  - jupyterlab-lsp
+  - jupyterlab-myst
+  - jupyterlab_code_formatter
+  - jupytext
+  - nbgitpuller
+  - retrolab
+
+  # =============================================================================
+  # Dask - distributed computing
+  # =============================================================================
+  - dask>=2024.1
+  - dask-gateway
+  - dask-labextension
+  - distributed>=2024.1
+
+  # =============================================================================
+  # Data formats & I/O
+  # =============================================================================
+  - fastparquet
+  - h5netcdf
+  - h5py
+  - kerchunk
+  - netcdf4
+  - numcodecs
+  - zarr>=3.0.8
+
+  # =============================================================================
+  # Cloud storage & data access
+  # =============================================================================
+  - adlfs
+  - awscli
+  - boto3
+  - botocore
+  - earthaccess
+  - erddapy
+  - fsspec
+  - gcsfs
+  - intake
+  - intake-esm<2025.2.3
+  - intake-stac
+  - intake-xarray
+  - s3fs
+
+  # =============================================================================
+  # Scientific computing
+  # =============================================================================
+  - bottleneck
+  - cython
+  - numba
+  - numpy
+  - pandas
+  - scikit-image
+  - scikit-learn
+  - scipy
+  - sparse
+  - xarray
+
+  # =============================================================================
+  # Geospatial
+  # =============================================================================
+  - cartopy
+  - cf_xarray
+  - cftime
+  - geopandas
+  - geopy
+  - nc-time-axis
+  - pystac
+  - pystac-client
+  - rasterio
+  - regionmask
+  - rioxarray
+  - shapely>=2
+  - stackstac
+  - xarray-spatial
+
+  # =============================================================================
+  # Climate & meteorology
+  # =============================================================================
+  - cmocean
+  - esmpy
+  - metpy
+  - rechunker
+  - xclim
+  - xesmf
+  - xgcm
+
+  # =============================================================================
+  # Satellite & remote sensing
+  # =============================================================================
+  - satpy
+  - odc-stac
+
+  # =============================================================================
+  # Visualization
+  # =============================================================================
+  - bokeh
+  - colorcet
+  - datashader
+  - geoviews
+  - graphviz
+  - holoviews
+  - hvplot
+  - ipyleaflet
+  - ipympl
+  - ipywidgets>=8
+  - lonboard
+  - matplotlib
+  - nodejs
+  - panel
+  - plotly
+  - python-graphviz
+  - seaborn
+
+  # =============================================================================
+  # Development tools
+  # =============================================================================
+  - black
+  - flake8
+  - gh
+  - ipdb
+  - isort
+  - jedi-language-server
+  - line_profiler
+  - pip
+  - pre-commit
+  - pytest
+  - ruff
+
+  # =============================================================================
+  # pip packages (not on conda-forge or need specific versions)
+  # =============================================================================
+  - pip:
+    # CAE-specific packages
+    - climakitae
+    - climakitaegui
+    # Git puller for notebooks
+    - gitpuller

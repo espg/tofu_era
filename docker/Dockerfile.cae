@@ -1,0 +1,57 @@
+# CAE JupyterHub Custom Image
+# Extends py-rocket-base with full Pangeo stack + climakitae in dedicated kernel
+#
+# Features:
+# - VSCode, RStudio, Desktop (from py-rocket-base)
+# - Dedicated "cae" conda environment with climakitae + full pangeo stack
+# - "cae" kernel set as default for new notebooks
+#
+# Build:
+#   docker build -f Dockerfile.cae -t cae-notebook:latest .
+#
+# Test locally:
+#   docker run -p 8888:8888 cae-notebook:latest
+
+ARG BASE_TAG=2025.12.22
+FROM ghcr.io/nmfs-opensci/py-rocket-base:${BASE_TAG}
+
+USER root
+
+# Install nb_conda_kernels so conda environments appear as Jupyter kernels
+RUN mamba install -y -c conda-forge nb_conda_kernels && \
+    mamba clean --all -f -y
+
+# Copy environment file
+COPY environment-cae.yml /tmp/environment-cae.yml
+
+USER ${NB_USER}
+
+# Create CAE environment with full pangeo stack + climakitae
+# This takes ~10-15 minutes due to large dependency tree
+RUN mamba env create -f /tmp/environment-cae.yml && \
+    mamba clean --all -f -y
+
+# Register the CAE kernel explicitly
+RUN /srv/conda/envs/cae/bin/python -m ipykernel install \
+    --user \
+    --name cae \
+    --display-name "Python [cae]"
+
+# Set CAE as the default kernel for new notebooks (Option A)
+ENV JUPYTER_DEFAULT_KERNEL=cae
+
+# Also configure JupyterLab to default to cae kernel
+RUN mkdir -p ~/.jupyter && \
+    echo 'c.MultiKernelManager.default_kernel_name = "cae"' >> ~/.jupyter/jupyter_lab_config.py
+
+# Verify installations work
+RUN mamba run -n cae python -c "import climakitae; print('climakitae OK')" && \
+    mamba run -n cae python -c "import boto3; print('boto3 OK')" && \
+    mamba run -n cae python -c "import xarray; print('xarray OK')" && \
+    mamba run -n cae python -c "import dask; print('dask OK')"
+
+# Add labels for tracking
+LABEL maintainer="CAE Team"
+LABEL description="py-rocket-base with CAE kernel (climakitae + pangeo stack)"
+LABEL base_image="ghcr.io/nmfs-opensci/py-rocket-base:${BASE_TAG}"
+LABEL features="vscode,rstudio,desktop,cae-kernel,pangeo-stack,climakitae"

@@ -1,5 +1,7 @@
-# Markdown files (exclude from initial commit)
-*.md
+# Markdown files - allow docs/ but ignore root-level
+/README.md
+/CHANGELOG.md
+!/docs/*.md
 
 # OpenTofu/Terraform files to exclude
 *.tfstate
