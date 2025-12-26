@@ -15,19 +15,14 @@ output "service_port" {
   value       = 9090
 }
 
+output "jupyterhub_service_url" {
+  description = "URL to access Kubecost via JupyterHub (after login)"
+  value       = "/services/kubecost/"
+}
+
 output "port_forward_command" {
-  description = "kubectl command to access Kubecost UI"
+  description = "kubectl command to access Kubecost UI directly (alternative)"
   value       = "kubectl port-forward -n kubecost svc/kubecost-cost-analyzer 9090:9090"
-}
-
-output "ui_url" {
-  description = "URL to access Kubecost UI"
-  value       = var.expose_via_loadbalancer ? "Check 'loadbalancer_hostname' output for public URL" : "http://localhost:9090 (use port-forward)"
-}
-
-output "loadbalancer_hostname" {
-  description = "LoadBalancer hostname for Kubecost (if exposed publicly)"
-  value       = var.expose_via_loadbalancer ? "Run: kubectl get svc -n kubecost kubecost-cost-analyzer -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'" : "Not exposed via LoadBalancer"
 }
 
 output "service_account_name" {

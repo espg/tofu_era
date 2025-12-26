@@ -57,34 +57,34 @@ output "kms_key_arn" {
 # S3 Information
 output "s3_bucket_name" {
   description = "Name of the S3 bucket for JupyterHub data"
-  value       = module.s3.bucket_name
+  value       = local.s3_bucket_name
 }
 
 output "s3_bucket_arn" {
   description = "ARN of the S3 bucket for JupyterHub data"
-  value       = module.s3.bucket_arn
+  value       = var.use_existing_s3_bucket ? "N/A - Using existing bucket: ${var.existing_s3_bucket_name}" : (length(module.s3) > 0 ? module.s3[0].bucket_arn : "N/A")
 }
 
 # Cognito Information (only for JupyterHub deployments)
 output "cognito_user_pool_id" {
   description = "ID of the Cognito User Pool"
-  value       = var.enable_jupyterhub ? module.cognito[0].user_pool_id : "N/A - Standalone Gateway"
+  value       = var.use_external_cognito ? "External: ${var.external_cognito_domain}" : (length(module.cognito) > 0 ? module.cognito[0].user_pool_id : "N/A - GitHub or Standalone")
 }
 
 output "cognito_user_pool_arn" {
   description = "ARN of the Cognito User Pool"
-  value       = var.enable_jupyterhub ? module.cognito[0].user_pool_arn : "N/A - Standalone Gateway"
+  value       = var.use_external_cognito ? "N/A - Using external Cognito" : (length(module.cognito) > 0 ? module.cognito[0].user_pool_arn : "N/A - GitHub or Standalone")
 }
 
 output "cognito_client_id" {
   description = "ID of the Cognito App Client"
-  value       = var.enable_jupyterhub ? module.cognito[0].client_id : "N/A - Standalone Gateway"
+  value       = var.use_external_cognito ? var.external_cognito_client_id : (length(module.cognito) > 0 ? module.cognito[0].client_id : "N/A")
   sensitive   = true
 }
 
 output "cognito_domain" {
   description = "Cognito domain for authentication"
-  value       = var.enable_jupyterhub ? module.cognito[0].domain : "N/A - Standalone Gateway"
+  value       = var.use_external_cognito ? var.external_cognito_domain : (length(module.cognito) > 0 ? module.cognito[0].domain : "N/A")
 }
 
 # ACM Certificate
@@ -116,26 +116,42 @@ output "jupyterhub_url" {
 
 output "login_instructions" {
   description = "Instructions for logging into JupyterHub or connecting to Dask Gateway"
-  value = !var.enable_jupyterhub ? "See dask_gateway_connection_info output for Gateway connection details" : (var.enable_acm ? join("\n", [
-    "To access JupyterHub:",
-    "1. Navigate to: https://${var.domain_name}",
-    "2. Log in with your Cognito credentials",
-    "3. First-time users need to be added to Cognito User Pool",
-    "",
-    "To add a new user:",
-    "aws cognito-idp admin-create-user \\",
-    "  --user-pool-id ${var.enable_jupyterhub ? module.cognito[0].user_pool_id : ""} \\",
-    "  --username <email> \\",
-    "  --user-attributes Name=email,Value=<email> Name=email_verified,Value=true \\",
-    "  --temporary-password <temp-password> \\",
-    "  --message-action SUPPRESS \\",
-    "  --region ${var.region}"
-    ]) : join("\n", [
-    "To access JupyterHub (HTTP mode):",
-    "1. Get load balancer URL: kubectl get svc -n daskhub proxy-public",
-    "2. Navigate to: http://<load-balancer-url>",
-    "3. Login with any username/password (dummy auth for testing)"
-  ]))
+  value = !var.enable_jupyterhub ? "See dask_gateway_connection_info output for Gateway connection details" : (
+    var.github_enabled ? join("\n", [
+      "To access JupyterHub:",
+      "1. Navigate to: https://${var.domain_name}",
+      "2. Log in with your GitHub credentials",
+      var.github_org_whitelist != "" ? "3. Note: Only members of ${var.github_org_whitelist} organization can access" : ""
+    ]) : (
+      var.use_external_cognito ? join("\n", [
+        "To access JupyterHub:",
+        "1. Navigate to: https://${var.domain_name}",
+        "2. Log in with your Cognito credentials",
+        "3. Users are managed in the external Cognito User Pool:",
+        "   Domain: ${var.external_cognito_domain}",
+        "   Client ID: ${var.external_cognito_client_id}"
+      ]) : (var.enable_acm ? join("\n", [
+        "To access JupyterHub:",
+        "1. Navigate to: https://${var.domain_name}",
+        "2. Log in with your Cognito credentials",
+        "3. First-time users need to be added to Cognito User Pool",
+        "",
+        "To add a new user:",
+        "aws cognito-idp admin-create-user \\",
+        "  --user-pool-id ${length(module.cognito) > 0 ? module.cognito[0].user_pool_id : "N/A"} \\",
+        "  --username <email> \\",
+        "  --user-attributes Name=email,Value=<email> Name=email_verified,Value=true \\",
+        "  --temporary-password <temp-password> \\",
+        "  --message-action SUPPRESS \\",
+        "  --region ${var.region}"
+      ]) : join("\n", [
+        "To access JupyterHub (HTTP mode):",
+        "1. Get load balancer URL: kubectl get svc -n jupyterhub proxy-public",
+        "2. Navigate to: http://<load-balancer-url>",
+        "3. Login with any username/password (dummy auth for testing)"
+      ]))
+    )
+  )
 }
 
 # Dask Gateway Connection Information (for standalone Gateway deployments)

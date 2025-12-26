@@ -807,3 +807,59 @@ module "cluster_autoscaler_irsa" {
 
   tags = var.tags
 }
+
+# User Node Group Scheduled Scaling
+# Scales up user node groups during business hours (e.g., 8am-5pm PT Mon-Fri)
+# Uses AWS Auto Scaling Scheduled Actions with timezone support
+
+# Schedule for scaling up user-small nodes during business hours
+resource "aws_autoscaling_schedule" "user_small_scale_up" {
+  count = var.use_three_node_groups && var.enable_user_node_scheduling ? 1 : 0
+
+  scheduled_action_name  = "${var.cluster_name}-user-small-scale-up"
+  autoscaling_group_name = aws_eks_node_group.user_small[0].resources[0].autoscaling_groups[0].name
+  min_size               = var.user_node_schedule_min_size_during_hours
+  max_size               = var.user_node_max_size
+  desired_capacity       = var.user_node_schedule_min_size_during_hours
+  recurrence             = var.user_node_schedule_scale_up_cron
+  time_zone              = var.user_node_schedule_timezone
+}
+
+# Schedule for scaling down user-small nodes after hours
+resource "aws_autoscaling_schedule" "user_small_scale_down" {
+  count = var.use_three_node_groups && var.enable_user_node_scheduling ? 1 : 0
+
+  scheduled_action_name  = "${var.cluster_name}-user-small-scale-down"
+  autoscaling_group_name = aws_eks_node_group.user_small[0].resources[0].autoscaling_groups[0].name
+  min_size               = var.user_node_schedule_min_size_after_hours
+  max_size               = var.user_node_max_size
+  desired_capacity       = var.user_node_schedule_min_size_after_hours
+  recurrence             = var.user_node_schedule_scale_down_cron
+  time_zone              = var.user_node_schedule_timezone
+}
+
+# Schedule for scaling up user-medium nodes during business hours
+resource "aws_autoscaling_schedule" "user_medium_scale_up" {
+  count = var.use_three_node_groups && var.enable_user_node_scheduling ? 1 : 0
+
+  scheduled_action_name  = "${var.cluster_name}-user-medium-scale-up"
+  autoscaling_group_name = aws_eks_node_group.user_medium[0].resources[0].autoscaling_groups[0].name
+  min_size               = var.user_node_schedule_min_size_during_hours
+  max_size               = var.user_node_max_size
+  desired_capacity       = var.user_node_schedule_min_size_during_hours
+  recurrence             = var.user_node_schedule_scale_up_cron
+  time_zone              = var.user_node_schedule_timezone
+}
+
+# Schedule for scaling down user-medium nodes after hours
+resource "aws_autoscaling_schedule" "user_medium_scale_down" {
+  count = var.use_three_node_groups && var.enable_user_node_scheduling ? 1 : 0
+
+  scheduled_action_name  = "${var.cluster_name}-user-medium-scale-down"
+  autoscaling_group_name = aws_eks_node_group.user_medium[0].resources[0].autoscaling_groups[0].name
+  min_size               = var.user_node_schedule_min_size_after_hours
+  max_size               = var.user_node_max_size
+  desired_capacity       = var.user_node_schedule_min_size_after_hours
+  recurrence             = var.user_node_schedule_scale_down_cron
+  time_zone              = var.user_node_schedule_timezone
+}

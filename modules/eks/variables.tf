@@ -169,3 +169,40 @@ variable "user_enable_spot_instances" {
   type        = bool
   default     = false
 }
+
+# User Node Scheduled Scaling
+variable "enable_user_node_scheduling" {
+  description = "Enable scheduled scaling for user node groups"
+  type        = bool
+  default     = false
+}
+
+variable "user_node_schedule_timezone" {
+  description = "Timezone for scheduled scaling (e.g., America/Los_Angeles)"
+  type        = string
+  default     = "America/Los_Angeles"
+}
+
+variable "user_node_schedule_scale_up_cron" {
+  description = "Cron expression for scaling up user nodes"
+  type        = string
+  default     = "0 8 * * MON-FRI"
+}
+
+variable "user_node_schedule_scale_down_cron" {
+  description = "Cron expression for scaling down user nodes"
+  type        = string
+  default     = "0 17 * * MON-FRI"
+}
+
+variable "user_node_schedule_min_size_during_hours" {
+  description = "Minimum user nodes during business hours"
+  type        = number
+  default     = 1
+}
+
+variable "user_node_schedule_min_size_after_hours" {
+  description = "Minimum user nodes after hours"
+  type        = number
+  default     = 0
+}

@@ -86,7 +86,7 @@ locals {
   cluster_name = "${var.cluster_name}-${var.environment}"
 
   # Extract secrets
-  cognito_client_secret = data.sops_file.secrets.data["cognito.client_secret"]
+  cognito_client_secret = try(data.sops_file.secrets.data["cognito.client_secret"], "")
   github_token          = try(data.sops_file.secrets.data["github.token"], "")
   github_client_id      = try(data.sops_file.secrets.data["github.client_id"], "")
   github_client_secret  = try(data.sops_file.secrets.data["github.client_secret"], "")
@@ -106,6 +106,28 @@ locals {
     desired_size = var.scale_to_zero ? 0 : var.dask_node_desired_size
     max_size     = var.dask_node_max_size
   }
+
+  # External Cognito configuration (use existing user pool)
+  # When use_external_cognito = true, use external URLs; otherwise use module outputs
+  cognito_enabled = var.enable_jupyterhub && (var.use_external_cognito || !var.github_enabled)
+  cognito_client_id = var.use_external_cognito ? var.external_cognito_client_id : (
+    var.enable_jupyterhub && length(module.cognito) > 0 ? module.cognito[0].client_id : ""
+  )
+  cognito_domain = var.use_external_cognito ? var.external_cognito_domain : (
+    var.enable_jupyterhub && length(module.cognito) > 0 ? module.cognito[0].domain : ""
+  )
+  cognito_authorize_url = var.use_external_cognito ? "https://${var.external_cognito_domain}/oauth2/authorize" : ""
+  cognito_token_url     = var.use_external_cognito ? "https://${var.external_cognito_domain}/oauth2/token" : ""
+  cognito_userdata_url  = var.use_external_cognito ? "https://${var.external_cognito_domain}/oauth2/userInfo" : ""
+  cognito_logout_url    = var.use_external_cognito ? "https://${var.external_cognito_domain}/logout?client_id=${var.external_cognito_client_id}&logout_uri=https://${var.domain_name}" : ""
+
+  # S3 bucket configuration (use existing or create new)
+  s3_bucket_name = var.use_existing_s3_bucket ? var.existing_s3_bucket_name : (
+    length(module.s3) > 0 ? module.s3[0].bucket_name : ""
+  )
+
+  # CUR bucket for Kubecost (only available when creating new S3 resources)
+  cur_bucket_name = length(module.s3) > 0 ? module.s3[0].cur_bucket_name : ""
 }
 
 # Data sources
@@ -136,9 +158,9 @@ module "kms" {
   tags         = local.common_tags
 }
 
-# Module: Cognito (only for JupyterHub deployments)
+# Module: Cognito (only for JupyterHub deployments when NOT using external Cognito)
 module "cognito" {
-  count  = var.enable_jupyterhub ? 1 : 0
+  count  = var.enable_jupyterhub && !var.use_external_cognito && !var.github_enabled ? 1 : 0
   source = "./modules/cognito"
 
   cluster_name = local.cluster_name
@@ -148,8 +170,9 @@ module "cognito" {
   tags         = local.common_tags
 }
 
-# Module: S3
+# Module: S3 (only when NOT using existing bucket)
 module "s3" {
+  count  = var.use_existing_s3_bucket ? 0 : 1
   source = "./modules/s3"
 
   cluster_name       = local.cluster_name
@@ -204,6 +227,14 @@ module "eks" {
   user_node_max_size         = var.user_node_max_size
   user_enable_spot_instances = var.user_enable_spot_instances
 
+  # User node scheduled scaling
+  enable_user_node_scheduling              = var.enable_user_node_scheduling
+  user_node_schedule_timezone              = var.user_node_schedule_timezone
+  user_node_schedule_scale_up_cron         = var.user_node_schedule_scale_up_cron
+  user_node_schedule_scale_down_cron       = var.user_node_schedule_scale_down_cron
+  user_node_schedule_min_size_during_hours = var.user_node_schedule_min_size_during_hours
+  user_node_schedule_min_size_after_hours  = var.user_node_schedule_min_size_after_hours
+
   # Main node group (legacy 2-node architecture)
   main_node_instance_types   = var.main_node_instance_types
   main_node_min_size         = local.main_node_config.min_size
@@ -228,7 +259,7 @@ module "kubernetes" {
   source = "./modules/kubernetes"
 
   cluster_name      = local.cluster_name
-  s3_bucket         = module.s3.bucket_name
+  s3_bucket         = local.s3_bucket_name
   kms_key_id        = module.kms.key_id
   oidc_provider_arn = module.eks.oidc_provider_arn
 
@@ -239,15 +270,25 @@ module "kubernetes" {
 module "helm" {
   source = "./modules/helm"
 
-  cluster_name          = local.cluster_name
-  domain_name           = var.domain_name
-  certificate_arn       = var.enable_acm ? module.acm[0].certificate_arn : ""
-  s3_bucket             = module.s3.bucket_name
-  cognito_client_id     = var.enable_jupyterhub ? module.cognito[0].client_id : ""
-  cognito_client_secret = var.enable_jupyterhub ? local.cognito_client_secret : ""
-  cognito_domain        = var.enable_jupyterhub ? module.cognito[0].domain : ""
-  cognito_user_pool_id  = var.enable_jupyterhub ? module.cognito[0].user_pool_id : ""
-  admin_email           = var.admin_email
+  cluster_name    = local.cluster_name
+  domain_name     = var.domain_name
+  certificate_arn = var.enable_acm ? module.acm[0].certificate_arn : ""
+  s3_bucket       = local.s3_bucket_name
+  admin_email     = var.admin_email
+
+  # Cognito authentication (external or module-created)
+  cognito_enabled       = local.cognito_enabled && !var.github_enabled
+  cognito_client_id     = local.cognito_client_id
+  cognito_client_secret = local.cognito_client_secret
+  cognito_domain        = local.cognito_domain
+  cognito_user_pool_id  = var.use_external_cognito ? "" : (length(module.cognito) > 0 ? module.cognito[0].user_pool_id : "")
+  cognito_authorize_url = local.cognito_authorize_url
+  cognito_token_url     = local.cognito_token_url
+  cognito_userdata_url  = local.cognito_userdata_url
+  cognito_logout_url    = local.cognito_logout_url
+
+  # Admin users
+  admin_users = var.admin_users
 
   # Deployment type
   enable_jupyterhub = var.enable_jupyterhub
@@ -270,6 +311,7 @@ module "helm" {
   # Idle timeouts
   kernel_cull_timeout = var.kernel_cull_timeout
   server_cull_timeout = var.server_cull_timeout
+  dask_idle_timeout   = var.dask_idle_timeout
 
   # Cluster autoscaler
   region                      = var.region
@@ -281,60 +323,91 @@ module "helm" {
   # JupyterLab profile selection
   enable_profile_selection = var.enable_profile_selection
 
+  # Lifecycle hooks for custom package installation
+  lifecycle_hooks_enabled      = var.lifecycle_hooks_enabled
+  lifecycle_post_start_command = var.lifecycle_post_start_command
+
   # GitHub OAuth authentication
-  github_enabled        = var.github_enabled
-  github_client_id      = local.github_client_id
-  github_client_secret  = local.github_client_secret
-  github_org_whitelist  = var.github_org_whitelist
+  github_enabled       = var.github_enabled
+  github_client_id     = local.github_client_id
+  github_client_secret = local.github_client_secret
+  github_org_whitelist = var.github_org_whitelist
+
+  # Kubecost integration via JupyterHub service proxy
+  enable_kubecost_service = var.enable_kubecost
 
   depends_on = [module.kubernetes]
 }
 
-# Module: Kubecost (Cost Monitoring)
-module "kubecost_irsa" {
-  count  = var.enable_kubecost ? 1 : 0
-  source = "./modules/irsa"
+# Module: Kubecost (Cost Monitoring) with Pod Identity
+# IAM Role for Kubecost Pod Identity
+resource "aws_iam_role" "kubecost" {
+  count = var.enable_kubecost ? 1 : 0
+  name  = "${local.cluster_name}-kubecost"
 
-  cluster_name      = local.cluster_name
-  oidc_provider_arn = module.eks.oidc_provider_arn
-  namespace         = "kubecost"
-  service_account   = "kubecost-cost-analyzer"
-
-  policy_statements = [
-    {
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
       Effect = "Allow"
+      Principal = {
+        Service = "pods.eks.amazonaws.com"
+      }
       Action = [
-        "ce:GetCostAndUsage",
-        "ce:GetCostForecast",
-        "s3:GetObject",
-        "s3:ListBucket",
-        "athena:StartQueryExecution",
-        "athena:GetQueryExecution",
-        "athena:GetQueryResults",
-        "glue:GetDatabase",
-        "glue:GetTable",
-        "glue:GetPartitions"
+        "sts:AssumeRole",
+        "sts:TagSession"
       ]
-      Resource = "*"
-    }
-  ]
+    }]
+  })
 
   tags = local.common_tags
+}
+
+resource "aws_iam_role_policy" "kubecost" {
+  count = var.enable_kubecost ? 1 : 0
+  name  = "${local.cluster_name}-kubecost-policy"
+  role  = aws_iam_role.kubecost[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ce:GetCostAndUsage",
+          "ce:GetCostForecast",
+          "s3:GetObject",
+          "s3:ListBucket",
+          "athena:StartQueryExecution",
+          "athena:GetQueryExecution",
+          "athena:GetQueryResults",
+          "glue:GetDatabase",
+          "glue:GetTable",
+          "glue:GetPartitions"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Pod Identity Association for Kubecost
+resource "aws_eks_pod_identity_association" "kubecost" {
+  count           = var.enable_kubecost ? 1 : 0
+  cluster_name    = local.cluster_name
+  namespace       = "kubecost"
+  service_account = "kubecost-cost-analyzer"
+  role_arn        = aws_iam_role.kubecost[0].arn
+
+  depends_on = [module.eks]
 }
 
 module "kubecost" {
   count  = var.enable_kubecost ? 1 : 0
   source = "./modules/kubecost"
 
-  cluster_name           = local.cluster_name
-  region                 = var.region
-  cur_bucket_name        = module.s3.cur_bucket_name
-  kubecost_irsa_role_arn = module.kubecost_irsa[0].role_arn
-
-  # Public access configuration
-  expose_via_loadbalancer       = var.kubecost_expose_public
-  kubecost_basic_auth_enabled   = var.kubecost_enable_auth
-  kubecost_basic_auth_password  = var.kubecost_auth_password
+  cluster_name    = local.cluster_name
+  region          = var.region
+  cur_bucket_name = local.cur_bucket_name
 
   # Node selector based on architecture
   node_selector = var.use_three_node_groups ? {
@@ -347,7 +420,7 @@ module "kubecost" {
   tolerations = []
 
   tags       = local.common_tags
-  depends_on = [module.helm, module.kubecost_irsa]
+  depends_on = [module.helm, aws_eks_pod_identity_association.kubecost]
 }
 
 # Module: Monitoring (Optional)

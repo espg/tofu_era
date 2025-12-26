@@ -107,6 +107,12 @@ variable "server_cull_timeout" {
   type        = number
 }
 
+variable "dask_idle_timeout" {
+  description = "Idle timeout for Dask clusters (seconds)"
+  type        = number
+  default     = 1800 # 30 minutes
+}
+
 variable "admin_users" {
   description = "List of admin user emails"
   type        = list(string)
@@ -221,4 +227,11 @@ variable "github_org_whitelist" {
   description = "GitHub organization name to restrict access (optional)"
   type        = string
   default     = ""
+}
+
+# Kubecost integration via JupyterHub service proxy
+variable "enable_kubecost_service" {
+  description = "Enable Kubecost as a JupyterHub service (accessible at /services/kubecost after login)"
+  type        = bool
+  default     = false
 }

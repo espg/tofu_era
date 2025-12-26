@@ -1,5 +1,6 @@
 # Kubecost Module - Cost Monitoring for Kubernetes
-# Provides per-pod, per-user, per-namespace cost tracking with AWS integration
+# Uses Pod Identity for AWS authentication (not IRSA)
+# Accessible via JupyterHub service proxy at /services/kubecost/
 
 terraform {
   required_providers {
@@ -11,15 +12,8 @@ terraform {
       source  = "registry.opentofu.org/hashicorp/kubernetes"
       version = "~> 2.24"
     }
-    aws = {
-      source  = "registry.opentofu.org/hashicorp/aws"
-      version = "~> 5.0"
-    }
   }
 }
-
-data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
 
 # Create namespace for Kubecost
 resource "kubernetes_namespace" "kubecost" {
@@ -31,14 +25,12 @@ resource "kubernetes_namespace" "kubecost" {
   }
 }
 
-# Service account for Kubecost (IRSA integration)
+# Service account for Kubecost (Pod Identity handles IAM - no annotations needed)
 resource "kubernetes_service_account" "kubecost" {
   metadata {
     name      = "kubecost-cost-analyzer"
     namespace = kubernetes_namespace.kubecost.metadata[0].name
-    annotations = {
-      "eks.amazonaws.com/role-arn" = var.kubecost_irsa_role_arn
-    }
+    # No IRSA annotations - Pod Identity handles this via aws_eks_pod_identity_association
   }
 }
 
@@ -77,7 +69,7 @@ resource "helm_release" "kubecost" {
         etl              = true
       }
 
-      # Service account configuration (use pre-created with IRSA)
+      # Service account configuration (use pre-created - Pod Identity handles IAM)
       serviceAccount = {
         create = false
         name   = kubernetes_service_account.kubecost.metadata[0].name
@@ -132,24 +124,17 @@ resource "helm_release" "kubecost" {
         enabled = false
       }
 
-      # Ingress disabled (using LoadBalancer instead)
+      # Ingress disabled - using JupyterHub service proxy instead
       ingress = {
         enabled = false
       }
 
-      # Service configuration
+      # Service configuration - ClusterIP for internal access only
+      # JupyterHub proxies to this service at /services/kubecost/
       service = {
-        type = var.expose_via_loadbalancer ? "LoadBalancer" : "ClusterIP"
+        type = "ClusterIP"
         port = 9090
-        annotations = var.expose_via_loadbalancer ? {
-          "service.beta.kubernetes.io/aws-load-balancer-type" = "nlb"
-          "service.beta.kubernetes.io/aws-load-balancer-scheme" = "internet-facing"
-        } : {}
       }
-
-      # Basic authentication (if enabled)
-      # Note: This requires creating a secret with htpasswd
-      # We'll handle this separately below
     })
   ]
 
@@ -158,44 +143,3 @@ resource "helm_release" "kubecost" {
     kubernetes_service_account.kubecost
   ]
 }
-
-# ConfigMap for AWS credentials (if using static credentials instead of IRSA)
-# Note: IRSA is preferred, this is a fallback
-resource "kubernetes_secret" "aws_credentials" {
-  count = var.use_irsa ? 0 : 1
-
-  metadata {
-    name      = "kubecost-aws-credentials"
-    namespace = kubernetes_namespace.kubecost.metadata[0].name
-  }
-
-  data = {
-    "aws-access-key-id"     = var.aws_access_key_id
-    "aws-secret-access-key" = var.aws_secret_access_key
-  }
-
-  type = "Opaque"
-}
-
-# Basic auth secret for Kubecost UI (if enabled)
-resource "kubernetes_secret" "kubecost_basic_auth" {
-  count = var.kubecost_basic_auth_enabled ? 1 : 0
-
-  metadata {
-    name      = "kubecost-basic-auth"
-    namespace = kubernetes_namespace.kubecost.metadata[0].name
-  }
-
-  data = {
-    # htpasswd format: username:bcrypt_hash
-    # Generate with: htpasswd -nB <username>
-    # For now, using Apache MD5 which is weaker but works
-    auth = "${var.kubecost_basic_auth_username}:${bcrypt(var.kubecost_basic_auth_password)}"
-  }
-
-  type = "Opaque"
-}
-
-# Nginx sidecar for basic auth (if enabled)
-# This will be injected via Helm values as an additional container
-# Kubernetes Ingress would be better, but we're using LoadBalancer for simplicity

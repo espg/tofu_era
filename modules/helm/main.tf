@@ -259,7 +259,7 @@ resource "helm_release" "daskhub" {
                       handler=option_handler,
                   )
               c.Backend.cluster_options = cluster_options
-              c.ClusterConfig.idle_timeout = ${var.server_cull_timeout}
+              c.ClusterConfig.idle_timeout = ${var.dask_idle_timeout}
               c.ClusterConfig.cluster_max_cores = ${var.dask_cluster_max_cores}
             EOF
           }
@@ -358,7 +358,7 @@ resource "helm_release" "dask_gateway_standalone" {
                 )
 
             c.Backend.cluster_options = cluster_options
-            c.ClusterConfig.idle_timeout = ${var.server_cull_timeout}
+            c.ClusterConfig.idle_timeout = ${var.dask_idle_timeout}
             c.ClusterConfig.cluster_max_cores = ${var.dask_cluster_max_cores}
           EOF
         }

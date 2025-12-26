@@ -2,11 +2,11 @@
 
 # Core Configuration
 variable "environment" {
-  description = "Environment name (test, dev, staging, prod, dasktest, daskscale, meseeks, englacial, englacial-test)"
+  description = "Environment name (englacial, cae, cae-dev)"
   type        = string
   validation {
-    condition     = contains(["test", "dev", "staging", "prod", "dasktest", "daskscale", "meseeks", "englacial", "englacial-test"], var.environment)
-    error_message = "Environment must be test, dev, staging, prod, dasktest, daskscale, meseeks, englacial, or englacial-test."
+    condition     = contains(["englacial", "cae", "cae-dev"], var.environment)
+    error_message = "Environment must be englacial, cae, or cae-dev."
   }
 }
 
@@ -177,6 +177,43 @@ variable "user_enable_spot_instances" {
   default     = false
 }
 
+# User Node Scheduled Scaling
+variable "enable_user_node_scheduling" {
+  description = "Enable scheduled scaling for user node groups (scale up during business hours)"
+  type        = bool
+  default     = false
+}
+
+variable "user_node_schedule_timezone" {
+  description = "Timezone for user node scheduling (e.g., America/Los_Angeles for Pacific)"
+  type        = string
+  default     = "America/Los_Angeles"
+}
+
+variable "user_node_schedule_scale_up_cron" {
+  description = "Cron expression for scaling up user nodes (default: 8am Mon-Fri)"
+  type        = string
+  default     = "0 8 * * MON-FRI"
+}
+
+variable "user_node_schedule_scale_down_cron" {
+  description = "Cron expression for scaling down user nodes (default: 5pm Mon-Fri)"
+  type        = string
+  default     = "0 17 * * MON-FRI"
+}
+
+variable "user_node_schedule_min_size_during_hours" {
+  description = "Minimum user nodes during business hours"
+  type        = number
+  default     = 1
+}
+
+variable "user_node_schedule_min_size_after_hours" {
+  description = "Minimum user nodes after hours (typically 0)"
+  type        = number
+  default     = 0
+}
+
 # Node Group Configuration - Main (Legacy/2-node architecture)
 # Kept for backwards compatibility with existing environments
 variable "main_node_instance_types" {
@@ -324,6 +361,12 @@ variable "server_cull_timeout" {
   default     = 3600 # 1 hour
 }
 
+variable "dask_idle_timeout" {
+  description = "Timeout for idle Dask clusters (seconds)"
+  type        = number
+  default     = 1800 # 30 minutes
+}
+
 # S3 Configuration
 variable "s3_lifecycle_days" {
   description = "Days before S3 objects are deleted"
@@ -370,28 +413,9 @@ variable "enable_monitoring" {
 }
 
 variable "enable_kubecost" {
-  description = "Enable Kubecost cost monitoring with AWS CUR integration"
+  description = "Enable Kubecost cost monitoring (accessible via JupyterHub at /services/kubecost/)"
   type        = bool
   default     = false
-}
-
-variable "kubecost_expose_public" {
-  description = "Expose Kubecost UI via public LoadBalancer (vs kubectl port-forward)"
-  type        = bool
-  default     = false
-}
-
-variable "kubecost_enable_auth" {
-  description = "Enable basic authentication for Kubecost UI"
-  type        = bool
-  default     = false
-}
-
-variable "kubecost_auth_password" {
-  description = "Password for Kubecost basic auth (username: admin)"
-  type        = string
-  default     = ""
-  sensitive   = true
 }
 
 # GitHub OAuth Authentication
@@ -431,4 +455,56 @@ variable "skip_final_snapshot" {
   description = "Skip final snapshot when destroying RDS (if used)"
   type        = bool
   default     = false
+}
+
+# External Cognito Configuration (use existing user pool instead of creating new)
+variable "use_external_cognito" {
+  description = "Use an existing Cognito user pool instead of creating a new one"
+  type        = bool
+  default     = false
+}
+
+variable "external_cognito_client_id" {
+  description = "Client ID for external Cognito user pool"
+  type        = string
+  default     = ""
+}
+
+variable "external_cognito_domain" {
+  description = "Domain for external Cognito user pool (e.g., cae.auth.us-west-1.amazoncognito.com)"
+  type        = string
+  default     = ""
+}
+
+# Lifecycle Hooks Configuration
+variable "lifecycle_hooks_enabled" {
+  description = "Enable lifecycle hooks for custom package installation at pod startup"
+  type        = bool
+  default     = false
+}
+
+variable "lifecycle_post_start_command" {
+  description = "Command to run after container starts (shell command as list)"
+  type        = list(string)
+  default     = ["sh", "-c", "echo 'No post-start hook configured'"]
+}
+
+# Existing S3 Bucket Configuration
+variable "use_existing_s3_bucket" {
+  description = "Use an existing S3 bucket instead of creating a new one"
+  type        = bool
+  default     = false
+}
+
+variable "existing_s3_bucket_name" {
+  description = "Name of existing S3 bucket to use (only when use_existing_s3_bucket = true)"
+  type        = string
+  default     = ""
+}
+
+# Admin Users Configuration
+variable "admin_users" {
+  description = "List of admin user emails for JupyterHub"
+  type        = list(string)
+  default     = []
 }
