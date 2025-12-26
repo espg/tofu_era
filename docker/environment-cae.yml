@@ -163,5 +163,3 @@ dependencies:
     # CAE-specific packages
     - climakitae
     - climakitaegui
-    # Git puller for notebooks
-    - gitpuller

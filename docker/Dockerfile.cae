@@ -24,12 +24,20 @@ RUN mamba install -y -c conda-forge nb_conda_kernels && \
 # Copy environment file
 COPY environment-cae.yml /tmp/environment-cae.yml
 
-USER ${NB_USER}
-
 # Create CAE environment with full pangeo stack + climakitae
 # This takes ~10-15 minutes due to large dependency tree
+# Must run as root for mamba permissions
 RUN mamba env create -f /tmp/environment-cae.yml && \
     mamba clean --all -f -y
+
+# Verify installations work (still as root)
+RUN mamba run -n cae python -c "import climakitae; print('climakitae OK')" && \
+    mamba run -n cae python -c "import boto3; print('boto3 OK')" && \
+    mamba run -n cae python -c "import xarray; print('xarray OK')" && \
+    mamba run -n cae python -c "import dask; print('dask OK')"
+
+# Switch to notebook user for user-specific configuration
+USER ${NB_USER}
 
 # Register the CAE kernel explicitly
 RUN /srv/conda/envs/cae/bin/python -m ipykernel install \
@@ -37,18 +45,12 @@ RUN /srv/conda/envs/cae/bin/python -m ipykernel install \
     --name cae \
     --display-name "Python [cae]"
 
-# Set CAE as the default kernel for new notebooks (Option A)
+# Set CAE as the default kernel for new notebooks
 ENV JUPYTER_DEFAULT_KERNEL=cae
 
-# Also configure JupyterLab to default to cae kernel
+# Configure JupyterLab to default to cae kernel
 RUN mkdir -p ~/.jupyter && \
     echo 'c.MultiKernelManager.default_kernel_name = "cae"' >> ~/.jupyter/jupyter_lab_config.py
-
-# Verify installations work
-RUN mamba run -n cae python -c "import climakitae; print('climakitae OK')" && \
-    mamba run -n cae python -c "import boto3; print('boto3 OK')" && \
-    mamba run -n cae python -c "import xarray; print('xarray OK')" && \
-    mamba run -n cae python -c "import dask; print('dask OK')"
 
 # Add labels for tracking
 LABEL maintainer="CAE Team"
