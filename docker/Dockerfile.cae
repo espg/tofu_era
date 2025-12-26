@@ -3,8 +3,9 @@
 #
 # Features:
 # - VSCode, RStudio, Desktop (from py-rocket-base)
-# - Dedicated "cae" conda environment with climakitae + full pangeo stack
+# - Dedicated "cae" environment with climakitae + full pangeo stack
 # - "cae" kernel set as default for new notebooks
+# - Uses pixi for fast dependency resolution (~2-3 min vs 10-15 min with mamba)
 #
 # Build:
 #   docker build -f Dockerfile.cae -t cae-notebook:latest .
@@ -17,27 +18,36 @@ FROM ghcr.io/nmfs-opensci/py-rocket-base:${BASE_TAG}
 
 USER root
 
+# Install pixi for fast conda environment creation
+RUN curl -fsSL https://pixi.sh/install.sh | bash && \
+    ln -s /root/.pixi/bin/pixi /usr/local/bin/pixi
+
 # Install nb_conda_kernels so conda environments appear as Jupyter kernels
 RUN mamba install -y -c conda-forge nb_conda_kernels && \
     mamba clean --all -f -y
 
-# Copy environment file
+# Copy environment file and create pixi project
 COPY environment-cae.yml /tmp/environment-cae.yml
+WORKDIR /opt/cae-env
+RUN pixi init --import /tmp/environment-cae.yml
 
-# Create CAE environment with full pangeo stack + climakitae
-# This takes ~10-15 minutes due to large dependency tree
-# Must run as root for mamba permissions
-RUN mamba env create -f /tmp/environment-cae.yml && \
-    mamba clean --all -f -y
+# Create CAE environment with pixi (much faster than mamba)
+# This takes ~2-3 minutes instead of 10-15 with mamba
+RUN pixi install
 
-# Verify installations work (still as root)
-RUN mamba run -n cae python -c "import climakitae; print('climakitae OK')" && \
-    mamba run -n cae python -c "import boto3; print('boto3 OK')" && \
-    mamba run -n cae python -c "import xarray; print('xarray OK')" && \
-    mamba run -n cae python -c "import dask; print('dask OK')"
+# Create a symlink so the environment appears as a conda env
+# This allows nb_conda_kernels to discover it
+RUN ln -s /opt/cae-env/.pixi/envs/default /srv/conda/envs/cae
+
+# Verify installations work
+RUN pixi run python -c "import climakitae; print('climakitae OK')" && \
+    pixi run python -c "import boto3; print('boto3 OK')" && \
+    pixi run python -c "import xarray; print('xarray OK')" && \
+    pixi run python -c "import dask; print('dask OK')"
 
 # Switch to notebook user for user-specific configuration
 USER ${NB_USER}
+WORKDIR /home/${NB_USER}
 
 # Register the CAE kernel explicitly
 RUN /srv/conda/envs/cae/bin/python -m ipykernel install \
@@ -56,4 +66,4 @@ RUN mkdir -p ~/.jupyter && \
 LABEL maintainer="CAE Team"
 LABEL description="py-rocket-base with CAE kernel (climakitae + pangeo stack)"
 LABEL base_image="ghcr.io/nmfs-opensci/py-rocket-base:2025.12.22"
-LABEL features="vscode,rstudio,desktop,cae-kernel,pangeo-stack,climakitae"
+LABEL features="vscode,rstudio,desktop,cae-kernel,pangeo-stack,climakitae,pixi"

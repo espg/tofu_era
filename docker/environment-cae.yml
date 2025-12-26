@@ -111,6 +111,7 @@ dependencies:
   - metpy
   - rechunker
   - xclim
+  - xsdba  # required by climakitae (xclim.sdba was split out)
   - xesmf
   - xgcm
 
