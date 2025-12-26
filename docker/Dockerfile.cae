@@ -20,7 +20,7 @@ USER root
 
 # Install pixi for fast conda environment creation
 # Set PIXI_HOME explicitly since base image has HOME=/home/jovyan even for root
-RUN PIXI_HOME=/opt/pixi curl -fsSL https://pixi.sh/install.sh | bash && \
+RUN curl -fsSL https://pixi.sh/install.sh | PIXI_HOME=/opt/pixi bash && \
     ln -s /opt/pixi/bin/pixi /usr/local/bin/pixi
 
 # Install nb_conda_kernels so conda environments appear as Jupyter kernels
