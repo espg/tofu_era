@@ -44,8 +44,9 @@ acm_auto_validate   = false # Manually add DNS validation records
 vpc_cidr                 = "10.6.0.0/16" # Different CIDR for dev
 enable_nat_gateway       = true
 single_nat_gateway       = true
-pin_main_nodes_single_az = true # All nodes in single AZ (matches cae)
-pin_user_nodes_single_az = true
+pin_main_nodes_single_az   = true # All nodes in single AZ (matches cae)
+pin_system_nodes_single_az = true # Prevents hub PVC/node zone affinity conflicts
+pin_user_nodes_single_az   = true
 
 # Node Group Architecture - 3-node (system, user, dask)
 use_three_node_groups = true
@@ -56,6 +57,7 @@ system_node_min_size         = 1
 system_node_desired_size     = 1
 system_node_max_size         = 1
 system_enable_spot_instances = false
+system_node_disk_size        = 50
 
 # Node Group - User (Scheduled Scaling) - Smaller for dev
 user_node_instance_types   = ["t3.large", "t3.xlarge"]
@@ -98,15 +100,17 @@ dask_worker_cores_max  = 4
 dask_worker_memory_max = 16
 dask_cluster_max_cores = 20
 
-# Container Image - Match production
-singleuser_image_name = "pangeo/pangeo-notebook"
-singleuser_image_tag  = "2025.01.10"
+# Container Image - py-rocket-base includes VSCode, RStudio, Desktop
+# See https://github.com/nmfs-opensci/py-rocket-base
+singleuser_image_name = "ghcr.io/nmfs-opensci/py-rocket-base"
+singleuser_image_tag  = "latest"
 
-# Lifecycle Hooks - Test climakitae installation
+# Lifecycle Hooks - Install ipykernel (VSCode Jupyter fix) + climakitae
+# ipykernel in base conda fixes: "Error: /srv/conda/bin/python: No module named ipykernel_launcher"
 lifecycle_hooks_enabled = true
 lifecycle_post_start_command = [
   "sh", "-c",
-  "/srv/conda/envs/notebook/bin/pip install --no-deps -e git+https://github.com/cal-adapt/climakitae.git#egg=climakitae -e git+https://github.com/cal-adapt/climakitaegui.git#egg=climakitaegui; /srv/conda/envs/notebook/bin/gitpuller https://github.com/cal-adapt/cae-notebooks main cae-notebooks || true"
+  "/srv/conda/bin/pip install ipykernel; /srv/conda/envs/notebook/bin/pip install --no-deps -e git+https://github.com/cal-adapt/climakitae.git#egg=climakitae -e git+https://github.com/cal-adapt/climakitaegui.git#egg=climakitaegui; /srv/conda/envs/notebook/bin/gitpuller https://github.com/cal-adapt/cae-notebooks main cae-notebooks || true"
 ]
 
 # Idle Timeouts - Aggressive for dev
@@ -142,3 +146,35 @@ skip_final_snapshot = true
 # Backup Configuration
 enable_backups        = false
 backup_retention_days = 1
+
+# VSCode Integration
+# py-rocket-base includes code-server, so VSCode is available at /vscode
+# Also includes RStudio at /rstudio and Desktop at /desktop
+enable_vscode = true
+default_url   = "/lab" # JupyterLab default; VSCode at /vscode, RStudio at /rstudio
+
+# Image pre-puller - only pulls default image (not all profile images)
+enable_continuous_image_puller = true
+
+# Custom Image Selection
+# Allow users to choose from multiple images or specify their own at login
+enable_custom_image_selection = true
+
+# Additional image options for users
+# slug must be ≤63 chars, lowercase alphanumeric + dashes only
+additional_image_choices = [
+  {
+    name         = "pangeo/pangeo-notebook:2025.01.10"
+    slug         = "pangeo"
+    display_name = "Pangeo Notebook (no VSCode)"
+    description  = "Standard Pangeo stack - JupyterLab only, no VSCode/RStudio"
+    default      = false
+  },
+  {
+    name         = "jupyter/scipy-notebook:latest"
+    slug         = "scipy"
+    display_name = "SciPy Notebook (no VSCode)"
+    description  = "Jupyter's official SciPy notebook - JupyterLab only"
+    default      = false
+  }
+]
