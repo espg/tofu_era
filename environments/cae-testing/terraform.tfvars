@@ -40,11 +40,12 @@ acm_enable_wildcard = false
 acm_auto_validate   = false
 
 # Network Configuration
-vpc_cidr                 = "10.7.0.0/16" # Different CIDR from cae-dev
-enable_nat_gateway       = true
-single_nat_gateway       = true
-pin_main_nodes_single_az = true
-pin_user_nodes_single_az = true
+vpc_cidr                   = "10.7.0.0/16" # Different CIDR from cae-dev
+enable_nat_gateway         = true
+single_nat_gateway         = true
+pin_main_nodes_single_az   = true
+pin_system_nodes_single_az = true
+pin_user_nodes_single_az   = true
 
 # Node Group Architecture - 3-node (system, user, dask)
 use_three_node_groups = true

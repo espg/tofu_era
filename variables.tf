@@ -107,6 +107,12 @@ variable "pin_main_nodes_single_az" {
   default     = false
 }
 
+variable "pin_system_nodes_single_az" {
+  description = "Pin system node group to single AZ (us-west-2a) for reliable EBS volume affinity (3-node architecture)"
+  type        = bool
+  default     = false
+}
+
 variable "pin_user_nodes_single_az" {
   description = "Pin user node group to single AZ (us-west-2a) to fix PVC zone affinity for user persistent volumes"
   type        = bool

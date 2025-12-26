@@ -140,6 +140,12 @@ variable "system_node_disk_size" {
   default     = 50
 }
 
+variable "system_node_subnet_ids" {
+  description = "Subnet IDs for system node group (optionally single AZ for EBS volume affinity). If null, uses subnet_ids."
+  type        = list(string)
+  default     = null
+}
+
 variable "user_node_disk_size" {
   description = "Disk size in GB for user nodes"
   type        = number

@@ -374,7 +374,7 @@ resource "aws_eks_node_group" "system" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "${var.cluster_name}-system"
   node_role_arn   = aws_iam_role.node.arn
-  subnet_ids      = var.subnet_ids
+  subnet_ids      = var.system_node_subnet_ids != null ? var.system_node_subnet_ids : var.subnet_ids
 
   instance_types = var.system_node_instance_types
   capacity_type  = var.system_enable_spot_instances ? "SPOT" : "ON_DEMAND"

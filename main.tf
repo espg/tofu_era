@@ -214,6 +214,7 @@ module "eks" {
 
   # System node group (3-node architecture)
   system_node_instance_types   = var.system_node_instance_types
+  system_node_subnet_ids       = var.pin_system_nodes_single_az ? module.networking.first_private_subnet_id : null
   system_node_min_size         = var.system_node_min_size
   system_node_desired_size     = var.system_node_desired_size
   system_node_max_size         = var.system_node_max_size
