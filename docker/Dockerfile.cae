@@ -55,6 +55,14 @@ RUN /srv/conda/envs/cae/bin/python -m ipykernel install \
     --name cae \
     --display-name "Python [cae]"
 
+# ALSO register as "python3" to handle existing notebooks
+# Existing .ipynb files have metadata like {"kernelspec": {"name": "python3"}}
+# Without this, opening old notebooks would try to use a different kernel
+# This overwrites the base image's python3 kernel with our cae environment
+RUN /srv/conda/envs/cae/bin/python -m ipykernel install \
+    --name python3 \
+    --display-name "Python 3 (ipykernel)"
+
 # =============================================================================
 # Set CAE as the DEFAULT kernel for new notebooks
 # =============================================================================
