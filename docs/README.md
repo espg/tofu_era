@@ -24,7 +24,31 @@ This directory contains documentation for the tofu_era project - an OpenTofu-bas
 
 ---
 
-### 2. [ENVIRONMENT_SYNC_STRATEGY.md](./ENVIRONMENT_SYNC_STRATEGY.md)
+### 2. [EKS_CLUSTER_ACCESS.md](./EKS_CLUSTER_ACCESS.md)
+
+**Purpose**: Explains how IAM users and roles are granted access to EKS clusters via the `aws-auth` ConfigMap.
+
+**Key Topics**:
+- How EKS authentication works
+- Configuring `cluster_admin_roles` and `cluster_admin_users`
+- Adding new developers or CI/CD roles
+- Debugging "Unauthorized" errors
+- Emergency manual fixes
+
+**Quick Reference**:
+```hcl
+# In terraform.tfvars
+cluster_admin_roles = [
+  { arn = "arn:aws:iam::ACCOUNT:role/github-actions", username = "github-actions" }
+]
+cluster_admin_users = [
+  { arn = "arn:aws:iam::ACCOUNT:user/developer", username = "developer" }
+]
+```
+
+---
+
+### 4. [ENVIRONMENT_SYNC_STRATEGY.md](./ENVIRONMENT_SYNC_STRATEGY.md)
 
 **Purpose**: Strategy for synchronizing configuration changes between testing and production environments.
 
@@ -52,7 +76,7 @@ make sync-promote SYNC_SOURCE=englacial SYNC_TARGET=prod
 
 ---
 
-### 3. [CAE_JUPYTERHUB_MIGRATION_ANALYSIS.md](./CAE_JUPYTERHUB_MIGRATION_ANALYSIS.md)
+### 5. [CAE_JUPYTERHUB_MIGRATION_ANALYSIS.md](./CAE_JUPYTERHUB_MIGRATION_ANALYSIS.md)
 
 **Purpose**: Analysis of differences between the existing `cae-jupyterhub` (eksctl + Helm) and the `englacial` environment (OpenTofu), with migration recommendations.
 
@@ -106,6 +130,7 @@ tofu_era/
 └── docs/                  # This directory
     ├── README.md
     ├── GITHUB_ACTIONS_OPENTOFU.md
+    ├── EKS_CLUSTER_ACCESS.md
     ├── ENVIRONMENT_SYNC_STRATEGY.md
     └── CAE_JUPYTERHUB_MIGRATION_ANALYSIS.md
 ```
