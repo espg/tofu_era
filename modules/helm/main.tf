@@ -93,13 +93,14 @@ locals {
         description  = "Standard JupyterLab environment"
         default      = true
         # Add image selection within this profile if enabled
+        # Note: Use {} instead of null - kubespawner's Python code breaks on null
         profile_options = var.enable_custom_image_selection || length(var.additional_image_choices) > 0 ? {
           image = {
             display_name    = "Image"
             unlisted_choice = local.unlisted_choice_config
             choices         = local.image_choices
           }
-        } : null
+        } : {}
         kubespawner_override = {
           cpu_guarantee = 1.6 # Must be < 1.7 to fit on r5.large after DaemonSet overhead
           cpu_limit     = 2
@@ -116,13 +117,14 @@ locals {
         description  = "For larger datasets and heavier computation"
         default      = false
         # Add image selection within this profile if enabled
+        # Note: Use {} instead of null - kubespawner's Python code breaks on null
         profile_options = var.enable_custom_image_selection || length(var.additional_image_choices) > 0 ? {
           image = {
             display_name    = "Image"
             unlisted_choice = local.unlisted_choice_config
             choices         = local.image_choices
           }
-        } : null
+        } : {}
         kubespawner_override = {
           cpu_guarantee = 3.5
           cpu_limit     = 4
@@ -160,7 +162,7 @@ resource "helm_release" "daskhub" {
   version          = "2024.1.1"
   namespace        = "daskhub"
   create_namespace = false # Namespace created by kubernetes module
-  timeout          = 600
+  timeout          = 1200 # 20 minutes - needed for pre-pulling large container images
 
   # JupyterHub Configuration
   values = [

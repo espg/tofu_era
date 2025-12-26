@@ -28,7 +28,7 @@ on:
         options:
           - cae-testing
           - cae-dev
-          # - cae  # Disabled until AWS_ROLE_ARN is configured
+          # - cae  # Production: intentionally excluded to prevent accidental deployments
       action:
         description: 'Action to perform'
         required: true
@@ -90,7 +90,8 @@ jobs:
               CHANGED="$ALL_ENVS"
             fi
 
-            # Filter out disabled environments (cae not ready yet)
+            # Filter out production (cae) from automatic deployments
+            # Production should only be deployed via manual workflow_dispatch
             CHANGED=$(echo "$CHANGED" | tr ',' '\n' | grep -v '^cae$' | tr '\n' ',' | sed 's/,$//')
 
             echo "environments=$CHANGED" >> $GITHUB_OUTPUT
