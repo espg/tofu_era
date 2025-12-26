@@ -192,7 +192,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
-      max-parallel: 1  # Apply one environment at a time
+      max-parallel: 1    # Apply one environment at a time
+      fail-fast: false   # Don't cancel other deploys if one fails
     environment:
       name: ${{ matrix.environment }}
 
