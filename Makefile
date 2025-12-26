@@ -111,15 +111,15 @@ refresh: init ## Refresh state
 	@echo -e "$(GREEN)Refreshing $(TF_BINARY) state...$(NC)"
 	$(TERRAFORM_CMD) refresh -var-file=$(TFVARS)
 
-output: ## Show outputs
+output: init ## Show outputs for target environment
 	@$(TERRAFORM_CMD) output -json | jq '.'
 
-show: ## Show current state
+show: init ## Show current state for target environment
 	@$(TERRAFORM_CMD) show
 
 ##@ Kubernetes Operations
 
-kubeconfig: ## Configure kubectl
+kubeconfig: init ## Configure kubectl for target environment
 	@echo -e "$(GREEN)Configuring kubectl...$(NC)"
 	@CLUSTER=$$($(TERRAFORM_CMD) output -raw cluster_name 2>/dev/null) && \
 	CLUSTER_REGION=$$($(TERRAFORM_CMD) output -raw region 2>/dev/null || echo $(REGION)) && \
@@ -241,7 +241,7 @@ status: kubeconfig ## Check cluster and application status
 		echo ""; \
 	fi
 
-test-login: ## Test JupyterHub login
+test-login: init ## Test JupyterHub login
 	@URL=$$($(TERRAFORM_CMD) output -raw jupyterhub_url 2>/dev/null) && \
 	echo -e "$(GREEN)Testing JupyterHub at $$URL$(NC)" && \
 	curl -s -o /dev/null -w "%{http_code}" $$URL || echo "Connection failed"
