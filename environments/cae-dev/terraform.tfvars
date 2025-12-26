@@ -100,18 +100,17 @@ dask_worker_cores_max  = 4
 dask_worker_memory_max = 16
 dask_cluster_max_cores = 20
 
-# Container Image - py-rocket-base includes VSCode, RStudio, Desktop
-# See https://github.com/nmfs-opensci/py-rocket-base
-singleuser_image_name = "ghcr.io/nmfs-opensci/py-rocket-base"
+# Container Image - Custom CAE image with climakitae + pangeo stack + VSCode/RStudio
+# Built from: docker/Dockerfile.cae (extends py-rocket-base)
+# Includes: climakitae, climakitaegui, full pangeo stack, VSCode, RStudio, Desktop
+singleuser_image_name = "ghcr.io/espg/cae-notebook"
 singleuser_image_tag  = "latest"
 
-# Lifecycle Hooks - Install ipykernel (VSCode Jupyter fix) + climakitae + dependencies
-# ipykernel in base conda fixes: "Error: /srv/conda/bin/python: No module named ipykernel_launcher"
-# boto3/botocore/s3fs are climakitae dependencies not in py-rocket-base
+# Lifecycle Hooks - Only pull CAE notebooks (climakitae already in image)
 lifecycle_hooks_enabled = true
 lifecycle_post_start_command = [
   "sh", "-c",
-  "/srv/conda/bin/pip install ipykernel && /srv/conda/envs/notebook/bin/pip install boto3 botocore s3fs && /srv/conda/envs/notebook/bin/pip install --no-deps git+https://github.com/cal-adapt/climakitae.git git+https://github.com/cal-adapt/climakitaegui.git && /srv/conda/envs/notebook/bin/gitpuller https://github.com/cal-adapt/cae-notebooks main cae-notebooks || true"
+  "/srv/conda/envs/cae/bin/gitpuller https://github.com/cal-adapt/cae-notebooks main cae-notebooks || true"
 ]
 
 # Idle Timeouts - Aggressive for dev

@@ -19,9 +19,10 @@ FROM ghcr.io/nmfs-opensci/py-rocket-base:${BASE_TAG}
 USER root
 
 # Install pixi for fast conda environment creation
-# Set HOME explicitly for entire command (base image has HOME=/home/jovyan even for root)
-RUN HOME=/root curl -fsSL https://pixi.sh/install.sh | bash && \
-    cp /root/.pixi/bin/pixi /usr/local/bin/pixi && \
+# Direct binary download - install script doesn't work in this Docker environment
+# (it ignores HOME and uses /etc/passwd to find home dir)
+RUN curl -fsSL https://github.com/prefix-dev/pixi/releases/latest/download/pixi-x86_64-unknown-linux-musl.tar.gz \
+    | tar -xz -C /usr/local/bin && \
     pixi --version
 
 # Install nb_conda_kernels so conda environments appear as Jupyter kernels
