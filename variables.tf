@@ -559,3 +559,9 @@ variable "default_url" {
   type        = string
   default     = "/lab"
 }
+
+variable "enable_continuous_image_puller" {
+  description = "Enable continuous image puller to pre-pull images on nodes. Disable for small test clusters."
+  type        = bool
+  default     = true
+}

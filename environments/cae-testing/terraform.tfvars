@@ -138,6 +138,9 @@ backup_retention_days = 1
 enable_vscode = true
 default_url   = "/lab" # JupyterLab default; VSCode at /vscode, RStudio at /rstudio
 
+# Image pre-puller - now only pulls default image (not all profile images)
+enable_continuous_image_puller = true
+
 # Custom Image Selection
 # Allow users to choose from multiple images or specify their own at login
 enable_custom_image_selection = true

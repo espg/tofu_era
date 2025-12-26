@@ -278,6 +278,29 @@ resource "helm_release" "daskhub" {
             }
           } : {}
         }
+        # Image pre-puller configuration
+        # When enabled, only pre-pull the default image (not all profile images)
+        # This avoids disk pressure on small nodes while still speeding up common case
+        prePuller = {
+          continuous = {
+            enabled = var.enable_continuous_image_puller
+          }
+          pullProfileListImages = false # Don't auto-extract from profiles (causes duplicates & disk pressure)
+          extraImages = var.enable_continuous_image_puller ? {
+            default = {
+              name = var.singleuser_image_name
+              tag  = var.singleuser_image_tag
+            }
+          } : {}
+        }
+        # Scheduling - run on system nodes
+        scheduling = {
+          userScheduler = {
+            nodeSelector = {
+              role = var.use_three_node_groups ? "system" : "main"
+            }
+          }
+        }
       }
       # Dask Gateway Configuration
       "dask-gateway" = {

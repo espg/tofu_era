@@ -345,6 +345,9 @@ module "helm" {
   enable_vscode = var.enable_vscode
   default_url   = var.default_url
 
+  # Image pre-pulling (disable for small test clusters)
+  enable_continuous_image_puller = var.enable_continuous_image_puller
+
   depends_on = [module.kubernetes]
 }
 
