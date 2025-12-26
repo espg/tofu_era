@@ -246,7 +246,8 @@ variable "enable_custom_image_selection" {
 variable "additional_image_choices" {
   description = "Additional Docker images available for selection at login"
   type = list(object({
-    name         = string
+    name         = string # Full image name (e.g., "pangeo/pangeo-notebook:2025.01.10")
+    slug         = string # Short identifier for K8s (e.g., "pangeo", "scipy") - max 63 chars, lowercase alphanumeric + dashes
     display_name = string
     description  = string
     default      = optional(bool, false)

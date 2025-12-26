@@ -7,9 +7,10 @@ locals {
   user_node_role = var.use_three_node_groups ? "user" : "main"
 
   # Build image choices for profile selection
+  # Keys must be short slugs (≤63 chars, alphanumeric + dashes) for Kubernetes container names
   # Default image is always first
   default_image_choice = {
-    "${var.singleuser_image_name}:${var.singleuser_image_tag}" = {
+    "default" = {
       display_name = "Default (${var.singleuser_image_tag})"
       default      = length(var.additional_image_choices) == 0 || !anytrue([for img in var.additional_image_choices : img.default])
       kubespawner_override = {
@@ -19,8 +20,9 @@ locals {
   }
 
   # Additional user-defined image choices
+  # Use user-provided slugs for readable, valid Kubernetes names
   additional_image_choices = {
-    for img in var.additional_image_choices : img.name => {
+    for img in var.additional_image_choices : img.slug => {
       display_name = img.display_name
       description  = img.description
       default      = img.default

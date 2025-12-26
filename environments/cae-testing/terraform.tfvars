@@ -128,15 +128,18 @@ default_url   = "/lab" # JupyterLab default; VSCode at /vscode, RStudio at /rstu
 enable_custom_image_selection = true
 
 # Additional image options for users
+# slug must be ≤63 chars, lowercase alphanumeric + dashes only
 additional_image_choices = [
   {
     name         = "pangeo/pangeo-notebook:2025.01.10"
+    slug         = "pangeo"
     display_name = "Pangeo Notebook (no VSCode)"
     description  = "Standard Pangeo stack - JupyterLab only, no VSCode/RStudio"
     default      = false
   },
   {
     name         = "jupyter/scipy-notebook:2024-12-09"
+    slug         = "scipy"
     display_name = "SciPy Notebook (no VSCode)"
     description  = "Jupyter's official SciPy notebook - JupyterLab only"
     default      = false
