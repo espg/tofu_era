@@ -110,7 +110,7 @@ variable "pin_main_nodes_single_az" {
 variable "pin_system_nodes_single_az" {
   description = "Pin system node group to single AZ (us-west-2a) for reliable EBS volume affinity (3-node architecture)"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "pin_user_nodes_single_az" {

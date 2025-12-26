@@ -109,7 +109,8 @@ locals {
 
   # External Cognito configuration (use existing user pool)
   # When use_external_cognito = true, use external URLs; otherwise use module outputs
-  cognito_enabled = var.enable_jupyterhub && (var.use_external_cognito || !var.github_enabled)
+  # Cognito requires a domain_name for OAuth callbacks - if no domain, use dummy auth
+  cognito_enabled = var.enable_jupyterhub && (var.use_external_cognito || (!var.github_enabled && var.domain_name != ""))
   cognito_client_id = var.use_external_cognito ? var.external_cognito_client_id : (
     var.enable_jupyterhub && length(module.cognito) > 0 ? module.cognito[0].client_id : ""
   )
@@ -159,8 +160,9 @@ module "kms" {
 }
 
 # Module: Cognito (only for JupyterHub deployments when NOT using external Cognito)
+# Requires a domain_name for OAuth callbacks - if no domain, use dummy auth
 module "cognito" {
-  count  = var.enable_jupyterhub && !var.use_external_cognito && !var.github_enabled ? 1 : 0
+  count  = var.enable_jupyterhub && !var.use_external_cognito && !var.github_enabled && var.domain_name != "" ? 1 : 0
   source = "./modules/cognito"
 
   cluster_name = local.cluster_name
