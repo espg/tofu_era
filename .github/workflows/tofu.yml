@@ -98,7 +98,7 @@ jobs:
         run: |
           ENVS="${{ steps.changes.outputs.environments }}"
           if [ -n "$ENVS" ]; then
-            MATRIX=$(echo "$ENVS" | tr ',' '\n' | jq -R . | jq -s '{environment: .}')
+            MATRIX=$(echo "$ENVS" | tr ',' '\n' | jq -R . | jq -sc '{environment: .}')
             echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
           else
             echo "matrix={\"environment\":[]}" >> $GITHUB_OUTPUT

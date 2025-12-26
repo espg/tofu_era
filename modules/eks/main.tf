@@ -74,8 +74,8 @@ resource "aws_eks_cluster" "main" {
     subnet_ids              = var.subnet_ids
     endpoint_private_access = true
     endpoint_public_access  = true
-    public_access_cidrs    = ["0.0.0.0/0"]
-    security_group_ids     = [aws_security_group.cluster.id]
+    public_access_cidrs     = ["0.0.0.0/0"]
+    security_group_ids      = [aws_security_group.cluster.id]
   }
 
   encryption_config {
@@ -222,7 +222,7 @@ resource "aws_launch_template" "main" {
     device_name = "/dev/xvda"
 
     ebs {
-      volume_size = 50  # Smaller root volume since we have NVMe
+      volume_size = 50 # Smaller root volume since we have NVMe
       volume_type = "gp3"
       encrypted   = true
     }
@@ -353,9 +353,9 @@ resource "aws_eks_node_group" "main" {
   tags = merge(
     var.tags,
     {
-      Name                                        = "${var.cluster_name}-main-node"
+      Name                                            = "${var.cluster_name}-main-node"
       "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
-      "k8s.io/cluster-autoscaler/enabled"         = "true"
+      "k8s.io/cluster-autoscaler/enabled"             = "true"
     }
   )
 
@@ -428,7 +428,7 @@ resource "aws_eks_node_group" "user_small" {
   node_role_arn   = aws_iam_role.node.arn
   subnet_ids      = var.user_node_subnet_ids != null ? var.user_node_subnet_ids : var.subnet_ids
 
-  instance_types = ["r5.large"]  # Small profile: 2 vCPU, 16 GiB
+  instance_types = ["r5.large"] # Small profile: 2 vCPU, 16 GiB
   capacity_type  = var.user_enable_spot_instances ? "SPOT" : "ON_DEMAND"
   ami_type       = "AL2023_x86_64_STANDARD"
 
@@ -475,7 +475,7 @@ resource "aws_eks_node_group" "user_medium" {
   node_role_arn   = aws_iam_role.node.arn
   subnet_ids      = var.user_node_subnet_ids != null ? var.user_node_subnet_ids : var.subnet_ids
 
-  instance_types = ["r5.xlarge"]  # Medium profile: 4 vCPU, 32 GiB
+  instance_types = ["r5.xlarge"] # Medium profile: 4 vCPU, 32 GiB
   capacity_type  = var.user_enable_spot_instances ? "SPOT" : "ON_DEMAND"
   ami_type       = "AL2023_x86_64_STANDARD"
 
@@ -521,7 +521,7 @@ resource "aws_launch_template" "dask_workers" {
     device_name = "/dev/xvda"
 
     ebs {
-      volume_size = 50  # Smaller root volume since we have NVMe
+      volume_size = 50 # Smaller root volume since we have NVMe
       volume_type = "gp3"
       encrypted   = true
     }
@@ -653,9 +653,9 @@ resource "aws_eks_node_group" "dask_workers" {
   tags = merge(
     var.tags,
     {
-      Name                                        = "${var.cluster_name}-dask-worker-node"
+      Name                                            = "${var.cluster_name}-dask-worker-node"
       "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
-      "k8s.io/cluster-autoscaler/enabled"         = "true"
+      "k8s.io/cluster-autoscaler/enabled"             = "true"
     }
   )
 
@@ -668,16 +668,16 @@ resource "aws_eks_node_group" "dask_workers" {
 
 # EKS Add-ons
 resource "aws_eks_addon" "vpc_cni" {
-  cluster_name = aws_eks_cluster.main.name
-  addon_name   = "vpc-cni"
+  cluster_name                = aws_eks_cluster.main.name
+  addon_name                  = "vpc-cni"
   resolve_conflicts_on_create = "OVERWRITE"
 
   tags = var.tags
 }
 
 resource "aws_eks_addon" "coredns" {
-  cluster_name = aws_eks_cluster.main.name
-  addon_name   = "coredns"
+  cluster_name                = aws_eks_cluster.main.name
+  addon_name                  = "coredns"
   resolve_conflicts_on_create = "OVERWRITE"
 
   tags = var.tags
@@ -689,8 +689,8 @@ resource "aws_eks_addon" "coredns" {
 }
 
 resource "aws_eks_addon" "kube_proxy" {
-  cluster_name = aws_eks_cluster.main.name
-  addon_name   = "kube-proxy"
+  cluster_name                = aws_eks_cluster.main.name
+  addon_name                  = "kube-proxy"
   resolve_conflicts_on_create = "OVERWRITE"
 
   tags = var.tags
@@ -702,8 +702,8 @@ resource "aws_eks_addon" "kube_proxy" {
 }
 
 resource "aws_eks_addon" "ebs_csi_driver" {
-  cluster_name = aws_eks_cluster.main.name
-  addon_name   = "aws-ebs-csi-driver"
+  cluster_name                = aws_eks_cluster.main.name
+  addon_name                  = "aws-ebs-csi-driver"
   resolve_conflicts_on_create = "OVERWRITE"
 
   tags = var.tags
@@ -715,8 +715,8 @@ resource "aws_eks_addon" "ebs_csi_driver" {
 }
 
 resource "aws_eks_addon" "pod_identity" {
-  cluster_name = aws_eks_cluster.main.name
-  addon_name   = "eks-pod-identity-agent"
+  cluster_name                = aws_eks_cluster.main.name
+  addon_name                  = "eks-pod-identity-agent"
   resolve_conflicts_on_create = "OVERWRITE"
 
   tags = var.tags

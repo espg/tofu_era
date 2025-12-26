@@ -122,7 +122,7 @@ output "login_instructions" {
       "1. Navigate to: https://${var.domain_name}",
       "2. Log in with your GitHub credentials",
       var.github_org_whitelist != "" ? "3. Note: Only members of ${var.github_org_whitelist} organization can access" : ""
-    ]) : (
+      ]) : (
       var.use_external_cognito ? join("\n", [
         "To access JupyterHub:",
         "1. Navigate to: https://${var.domain_name}",
@@ -130,25 +130,25 @@ output "login_instructions" {
         "3. Users are managed in the external Cognito User Pool:",
         "   Domain: ${var.external_cognito_domain}",
         "   Client ID: ${var.external_cognito_client_id}"
-      ]) : (var.enable_acm ? join("\n", [
-        "To access JupyterHub:",
-        "1. Navigate to: https://${var.domain_name}",
-        "2. Log in with your Cognito credentials",
-        "3. First-time users need to be added to Cognito User Pool",
-        "",
-        "To add a new user:",
-        "aws cognito-idp admin-create-user \\",
-        "  --user-pool-id ${length(module.cognito) > 0 ? module.cognito[0].user_pool_id : "N/A"} \\",
-        "  --username <email> \\",
-        "  --user-attributes Name=email,Value=<email> Name=email_verified,Value=true \\",
-        "  --temporary-password <temp-password> \\",
-        "  --message-action SUPPRESS \\",
-        "  --region ${var.region}"
-      ]) : join("\n", [
-        "To access JupyterHub (HTTP mode):",
-        "1. Get load balancer URL: kubectl get svc -n jupyterhub proxy-public",
-        "2. Navigate to: http://<load-balancer-url>",
-        "3. Login with any username/password (dummy auth for testing)"
+        ]) : (var.enable_acm ? join("\n", [
+          "To access JupyterHub:",
+          "1. Navigate to: https://${var.domain_name}",
+          "2. Log in with your Cognito credentials",
+          "3. First-time users need to be added to Cognito User Pool",
+          "",
+          "To add a new user:",
+          "aws cognito-idp admin-create-user \\",
+          "  --user-pool-id ${length(module.cognito) > 0 ? module.cognito[0].user_pool_id : "N/A"} \\",
+          "  --username <email> \\",
+          "  --user-attributes Name=email,Value=<email> Name=email_verified,Value=true \\",
+          "  --temporary-password <temp-password> \\",
+          "  --message-action SUPPRESS \\",
+          "  --region ${var.region}"
+          ]) : join("\n", [
+          "To access JupyterHub (HTTP mode):",
+          "1. Get load balancer URL: kubectl get svc -n jupyterhub proxy-public",
+          "2. Navigate to: http://<load-balancer-url>",
+          "3. Login with any username/password (dummy auth for testing)"
       ]))
     )
   )
@@ -261,14 +261,14 @@ output "estimated_monthly_cost" {
 output "debug_info" {
   description = "Debug information for troubleshooting"
   value = {
-    environment              = var.environment
-    region                   = var.region
-    account_id               = data.aws_caller_identity.current.account_id
-    nat_gateway_enabled      = local.enable_nat_gateway
-    main_spot_instances      = var.main_enable_spot_instances
-    dask_spot_instances      = var.dask_enable_spot_instances
-    scale_to_zero            = var.scale_to_zero
-    auto_shutdown            = var.enable_auto_shutdown
+    environment         = var.environment
+    region              = var.region
+    account_id          = data.aws_caller_identity.current.account_id
+    nat_gateway_enabled = local.enable_nat_gateway
+    main_spot_instances = var.main_enable_spot_instances
+    dask_spot_instances = var.dask_enable_spot_instances
+    scale_to_zero       = var.scale_to_zero
+    auto_shutdown       = var.enable_auto_shutdown
   }
   sensitive = true
 }

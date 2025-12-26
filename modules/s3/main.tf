@@ -65,7 +65,7 @@ resource "aws_s3_bucket" "cur" {
   tags = merge(
     var.tags,
     {
-      Name = "${var.cluster_name}-cur"
+      Name    = "${var.cluster_name}-cur"
       Purpose = "AWS Cost and Usage Reports for Kubecost"
     }
   )
@@ -102,7 +102,7 @@ resource "aws_s3_bucket_policy" "cur" {
         Resource = aws_s3_bucket.cur[0].arn
         Condition = {
           StringEquals = {
-            "aws:SourceArn"    = "arn:aws:cur:us-east-1:${data.aws_caller_identity.current.account_id}:definition/*"
+            "aws:SourceArn"     = "arn:aws:cur:us-east-1:${data.aws_caller_identity.current.account_id}:definition/*"
             "aws:SourceAccount" = data.aws_caller_identity.current.account_id
           }
         }
@@ -117,7 +117,7 @@ resource "aws_s3_bucket_policy" "cur" {
         Resource = "${aws_s3_bucket.cur[0].arn}/*"
         Condition = {
           StringEquals = {
-            "aws:SourceArn"    = "arn:aws:cur:us-east-1:${data.aws_caller_identity.current.account_id}:definition/*"
+            "aws:SourceArn"     = "arn:aws:cur:us-east-1:${data.aws_caller_identity.current.account_id}:definition/*"
             "aws:SourceAccount" = data.aws_caller_identity.current.account_id
           }
         }
@@ -154,10 +154,10 @@ resource "aws_cur_report_definition" "kubecost" {
   compression                = "Parquet"
   additional_schema_elements = ["RESOURCES"]
   s3_bucket                  = aws_s3_bucket.cur[0].id
-  s3_region                  = var.region  # Bucket is in cluster region
+  s3_region                  = var.region # Bucket is in cluster region
   s3_prefix                  = "cur"
 
-  additional_artifacts = ["ATHENA"]  # Generate Athena-compatible metadata
+  additional_artifacts = ["ATHENA"] # Generate Athena-compatible metadata
 
   # Refresh mode
   refresh_closed_reports = true

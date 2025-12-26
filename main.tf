@@ -336,6 +336,14 @@ module "helm" {
   # Kubecost integration via JupyterHub service proxy
   enable_kubecost_service = var.enable_kubecost
 
+  # Custom image selection
+  enable_custom_image_selection = var.enable_custom_image_selection
+  additional_image_choices      = var.additional_image_choices
+
+  # VSCode integration
+  enable_vscode = var.enable_vscode
+  default_url   = var.default_url
+
   depends_on = [module.kubernetes]
 }
 
@@ -412,7 +420,7 @@ module "kubecost" {
   # Node selector based on architecture
   node_selector = var.use_three_node_groups ? {
     role = "system"
-  } : {
+    } : {
     role = "main"
   }
 

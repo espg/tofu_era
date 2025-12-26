@@ -45,7 +45,7 @@ resource "helm_release" "kubecost" {
   name       = "kubecost"
   repository = "https://kubecost.github.io/cost-analyzer/"
   chart      = "cost-analyzer"
-  version    = "1.108.1"  # Stable version compatible with free tier
+  version    = "1.108.1" # Stable version compatible with free tier
   namespace  = kubernetes_namespace.kubecost.metadata[0].name
 
   # Wait for CRDs and pods to be ready
@@ -318,7 +318,7 @@ resource "kubernetes_service" "kubecost_proxy" {
     }
 
     port {
-      port        = 9090  # Same port as Kubecost for consistency
+      port        = 9090 # Same port as Kubecost for consistency
       target_port = 8080
     }
 

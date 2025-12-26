@@ -36,7 +36,7 @@ output "validation_instructions" {
     Name:   ${opt.resource_record_name}
     Value:  ${opt.resource_record_value}
     RECORD
-    ])}
+])}
 
     After adding the DNS records:
     1. Wait 5-10 minutes for DNS propagation

@@ -2,11 +2,11 @@
 
 # Core Configuration
 variable "environment" {
-  description = "Environment name (englacial, cae, cae-dev)"
+  description = "Environment name (cae, cae-dev, cae-testing)"
   type        = string
   validation {
-    condition     = contains(["englacial", "cae", "cae-dev"], var.environment)
-    error_message = "Environment must be englacial, cae, or cae-dev."
+    condition     = contains(["cae", "cae-dev", "cae-testing"], var.environment)
+    error_message = "Environment must be cae, cae-dev, or cae-testing."
   }
 }
 
@@ -301,7 +301,7 @@ variable "singleuser_image_name" {
 variable "singleuser_image_tag" {
   description = "Docker image tag for single user notebooks"
   type        = string
-  default     = "2024.04.08"  # Compatible with DaskHub 2024.1.1 (JupyterHub 4.0.2)
+  default     = "2024.04.08" # Compatible with DaskHub 2024.1.1 (JupyterHub 4.0.2)
 }
 
 # User Resource Limits
@@ -507,4 +507,35 @@ variable "admin_users" {
   description = "List of admin user emails for JupyterHub"
   type        = list(string)
   default     = []
+}
+
+# Custom Image Selection
+variable "enable_custom_image_selection" {
+  description = "Allow users to specify custom Docker images at login (unlisted_choice)"
+  type        = bool
+  default     = false
+}
+
+variable "additional_image_choices" {
+  description = "Additional Docker images available for selection at login"
+  type = list(object({
+    name         = string
+    display_name = string
+    description  = string
+    default      = optional(bool, false)
+  }))
+  default = []
+}
+
+# VSCode Integration
+variable "enable_vscode" {
+  description = "Enable VSCode (code-server) access in JupyterLab via jupyter-vscode-proxy"
+  type        = bool
+  default     = false
+}
+
+variable "default_url" {
+  description = "Default URL when user opens JupyterHub (e.g., /lab, /vscode, /tree)"
+  type        = string
+  default     = "/lab"
 }

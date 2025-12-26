@@ -22,20 +22,20 @@ kubernetes_version = "1.31"
 # ACM Certificate - Manual DNS validation (no Route53)
 enable_acm          = true
 acm_enable_wildcard = false
-acm_auto_validate   = false  # Manually add DNS validation records
+acm_auto_validate   = false # Manually add DNS validation records
 
 # Network Configuration
-vpc_cidr                 = "10.6.0.0/16"  # Different CIDR for dev
+vpc_cidr                 = "10.6.0.0/16" # Different CIDR for dev
 enable_nat_gateway       = true
 single_nat_gateway       = true
-pin_main_nodes_single_az = true   # All nodes in single AZ (matches cae)
+pin_main_nodes_single_az = true # All nodes in single AZ (matches cae)
 pin_user_nodes_single_az = true
 
 # Node Group Architecture - 3-node (system, user, dask)
 use_three_node_groups = true
 
 # Node Group - System (Always Running) - Smaller for dev
-system_node_instance_types   = ["t3.large"]  # Cheaper for dev
+system_node_instance_types   = ["t3.large"] # Cheaper for dev
 system_node_min_size         = 1
 system_node_desired_size     = 1
 system_node_max_size         = 1
@@ -50,11 +50,11 @@ user_enable_spot_instances = false
 
 # User Node Scheduled Scaling - warm node during business hours (same as production)
 enable_user_node_scheduling              = true
-user_node_schedule_timezone              = "America/Los_Angeles"  # Pacific Time
-user_node_schedule_scale_up_cron         = "0 8 * * MON-FRI"      # 8am PT Mon-Fri
-user_node_schedule_scale_down_cron       = "0 17 * * MON-FRI"     # 5pm PT Mon-Fri
-user_node_schedule_min_size_during_hours = 1                       # Keep 1 node warm
-user_node_schedule_min_size_after_hours  = 0                       # Scale to zero
+user_node_schedule_timezone              = "America/Los_Angeles" # Pacific Time
+user_node_schedule_scale_up_cron         = "0 8 * * MON-FRI"     # 8am PT Mon-Fri
+user_node_schedule_scale_down_cron       = "0 17 * * MON-FRI"    # 5pm PT Mon-Fri
+user_node_schedule_min_size_during_hours = 1                     # Keep 1 node warm
+user_node_schedule_min_size_after_hours  = 0                     # Scale to zero
 
 # Node Group - Dask Workers (Spot) - Limited for dev
 dask_node_instance_types = [
@@ -94,14 +94,14 @@ lifecycle_post_start_command = [
 ]
 
 # Idle Timeouts - Aggressive for dev
-kernel_cull_timeout = 600   # 10 minutes
-server_cull_timeout = 1800  # 30 minutes
-dask_idle_timeout   = 1800  # 30 minutes (matches cae-jupyterhub and cae)
+kernel_cull_timeout = 600  # 10 minutes
+server_cull_timeout = 1800 # 30 minutes
+dask_idle_timeout   = 1800 # 30 minutes (matches cae-jupyterhub and cae)
 
 # S3 Configuration - CREATE NEW BUCKET (not existing)
 use_existing_s3_bucket  = false
 existing_s3_bucket_name = ""
-s3_lifecycle_days       = 7   # Short retention for dev
+s3_lifecycle_days       = 7 # Short retention for dev
 force_destroy_s3        = true
 
 # Authentication - Cognito (us-west-1)
@@ -117,7 +117,7 @@ enable_auto_shutdown = true
 shutdown_schedule    = "0 20 * * *"      # 8 PM daily
 startup_schedule     = "0 8 * * MON-FRI" # 8 AM weekdays
 enable_monitoring    = false
-enable_kubecost      = true   # Cost monitoring (same as production)
+enable_kubecost      = true # Cost monitoring (same as production)
 
 # Safety - Dev settings (easy cleanup)
 deletion_protection = false

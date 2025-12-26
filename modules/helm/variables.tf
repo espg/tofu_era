@@ -59,7 +59,7 @@ variable "singleuser_image_name" {
 variable "singleuser_image_tag" {
   description = "Docker image tag for single user notebooks"
   type        = string
-  default     = "2024.04.08"  # Compatible with DaskHub 2024.1.1 (JupyterHub 4.0.2)
+  default     = "2024.04.08" # Compatible with DaskHub 2024.1.1 (JupyterHub 4.0.2)
 }
 
 variable "user_cpu_guarantee" {
@@ -234,4 +234,35 @@ variable "enable_kubecost_service" {
   description = "Enable Kubecost as a JupyterHub service (accessible at /services/kubecost after login)"
   type        = bool
   default     = false
+}
+
+# Custom Image Selection
+variable "enable_custom_image_selection" {
+  description = "Allow users to specify custom Docker images at login (unlisted_choice)"
+  type        = bool
+  default     = false
+}
+
+variable "additional_image_choices" {
+  description = "Additional Docker images available for selection at login"
+  type = list(object({
+    name         = string
+    display_name = string
+    description  = string
+    default      = optional(bool, false)
+  }))
+  default = []
+}
+
+# VSCode integration
+variable "enable_vscode" {
+  description = "Enable VSCode (code-server) access in JupyterLab via jupyter-vscode-proxy"
+  type        = bool
+  default     = false
+}
+
+variable "default_url" {
+  description = "Default URL when user opens JupyterHub (e.g., /lab, /vscode, /tree)"
+  type        = string
+  default     = "/lab"
 }
