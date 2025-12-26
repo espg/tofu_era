@@ -20,7 +20,8 @@ USER root
 
 # Install pixi for fast conda environment creation
 RUN curl -fsSL https://pixi.sh/install.sh | bash && \
-    ln -s /root/.pixi/bin/pixi /usr/local/bin/pixi
+    cp /root/.pixi/bin/pixi /usr/local/bin/pixi && \
+    chmod +x /usr/local/bin/pixi
 
 # Install nb_conda_kernels so conda environments appear as Jupyter kernels
 RUN mamba install -y -c conda-forge nb_conda_kernels && \
