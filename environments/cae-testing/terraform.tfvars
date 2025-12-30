@@ -16,13 +16,11 @@ admin_users = [
   "admin"
 ]
 
-# EKS Cluster Access (aws-auth ConfigMap)
-cluster_admin_roles = [
-  {
-    arn      = "arn:aws:iam::992398409787:role/github-actions-tofu-era"
-    username = "github-actions"
-  }
-]
+# EKS Cluster Access
+# GitHub Actions gets access via bootstrap_cluster_creator_admin_permissions
+# (automatically granted when it creates the cluster - no explicit entry needed)
+# Only list additional users/roles here that need access
+cluster_admin_roles = []
 
 cluster_admin_users = [
   {
