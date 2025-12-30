@@ -107,7 +107,7 @@ singleuser_image_tag  = "latest"
 lifecycle_hooks_enabled = true
 lifecycle_post_start_command = [
   "sh", "-c",
-  "/srv/conda/envs/cae/bin/gitpuller https://github.com/cal-adapt/cae-notebooks main cae-notebooks || true"
+  "python -m nbgitpuller https://github.com/cal-adapt/cae-notebooks main cae-notebooks || true"
 ]
 
 # Idle Timeouts - Aggressive for dev
