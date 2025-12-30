@@ -78,6 +78,14 @@ resource "aws_eks_cluster" "main" {
     security_group_ids      = [aws_security_group.cluster.id]
   }
 
+  # Enable API-based access (in addition to ConfigMap) to solve chicken-and-egg problem
+  # When Terraform creates the cluster, it automatically gets admin access via the API,
+  # which allows it to then configure the aws-auth ConfigMap for future access.
+  access_config {
+    authentication_mode                         = "API_AND_CONFIG_MAP"
+    bootstrap_cluster_creator_admin_permissions = true
+  }
+
   encryption_config {
     provider {
       key_arn = var.kms_key_id
@@ -823,4 +831,61 @@ resource "aws_autoscaling_schedule" "user_medium_scale_down" {
   desired_capacity       = var.user_node_schedule_min_size_after_hours
   recurrence             = var.user_node_schedule_scale_down_cron
   time_zone              = var.user_node_schedule_timezone
+}
+
+# =============================================================================
+# EKS Access Entries - API-based cluster access
+# =============================================================================
+# These provide cluster access via the EKS API (in addition to aws-auth ConfigMap).
+# This solves the chicken-and-egg problem where Terraform needs to authenticate
+# to the cluster before it can configure the ConfigMap.
+
+# Access entries for admin IAM roles (e.g., GitHub Actions)
+resource "aws_eks_access_entry" "admin_roles" {
+  for_each = { for idx, role in var.cluster_admin_roles : role.arn => role }
+
+  cluster_name  = aws_eks_cluster.main.name
+  principal_arn = each.value.arn
+  type          = "STANDARD"
+
+  tags = var.tags
+}
+
+resource "aws_eks_access_policy_association" "admin_roles" {
+  for_each = { for idx, role in var.cluster_admin_roles : role.arn => role }
+
+  cluster_name  = aws_eks_cluster.main.name
+  principal_arn = each.value.arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+
+  depends_on = [aws_eks_access_entry.admin_roles]
+}
+
+# Access entries for admin IAM users (e.g., espg)
+resource "aws_eks_access_entry" "admin_users" {
+  for_each = { for idx, user in var.cluster_admin_users : user.arn => user }
+
+  cluster_name  = aws_eks_cluster.main.name
+  principal_arn = each.value.arn
+  type          = "STANDARD"
+
+  tags = var.tags
+}
+
+resource "aws_eks_access_policy_association" "admin_users" {
+  for_each = { for idx, user in var.cluster_admin_users : user.arn => user }
+
+  cluster_name  = aws_eks_cluster.main.name
+  principal_arn = each.value.arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+
+  depends_on = [aws_eks_access_entry.admin_users]
 }

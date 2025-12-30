@@ -1,10 +1,10 @@
 # CAE JupyterHub Custom Image
-# Extends py-rocket-base with full Pangeo stack + climakitae in dedicated kernel
+# Extends py-rocket-base with full Pangeo stack + climakitae as the DEFAULT Python
 #
 # Features:
 # - VSCode, RStudio, Desktop (from py-rocket-base)
-# - Dedicated "cae" environment with climakitae + full pangeo stack
-# - "cae" kernel set as default for new notebooks
+# - CAE environment (climakitae + full pangeo stack) REPLACES the default notebook env
+# - `which python` returns the CAE Python - no kernel confusion
 # - Uses pixi for fast dependency resolution (~2-3 min vs 10-15 min with mamba)
 #
 # Build:
@@ -25,10 +25,6 @@ RUN curl -fsSL https://github.com/prefix-dev/pixi/releases/latest/download/pixi-
     | tar -xz -C /usr/local/bin && \
     pixi --version
 
-# NOTE: We do NOT install nb_conda_kernels
-# It auto-discovers ALL conda environments as kernels, which causes confusion
-# Instead, we explicitly register only the kernels we want
-
 # Copy environment file and create pixi project
 COPY environment-cae.yml /tmp/environment-cae.yml
 WORKDIR /opt/cae-env
@@ -38,75 +34,43 @@ RUN pixi init --import /tmp/environment-cae.yml
 # This takes ~2-3 minutes instead of 10-15 with mamba
 RUN pixi install
 
-# Create a symlink so the environment appears as a conda env
-# This allows nb_conda_kernels to discover it
-RUN mkdir -p /srv/conda/envs && \
-    ln -s /opt/cae-env/.pixi/envs/default /srv/conda/envs/cae
-
-# Verify installations work
-RUN pixi run python -c "import climakitae; print('climakitae OK')" && \
-    pixi run python -c "import boto3; print('boto3 OK')" && \
-    pixi run python -c "import xarray; print('xarray OK')" && \
-    pixi run python -c "import dask; print('dask OK')"
-
 # =============================================================================
-# REMOVE ALL EXISTING KERNELS - Start fresh
+# REPLACE the default notebook environment with CAE
 # =============================================================================
-# The base image has multiple kernels that interfere with our default
-# Remove them all, then register ONLY what we want
-RUN rm -rf /usr/local/share/jupyter/kernels/* \
-           /usr/share/jupyter/kernels/* \
-           /opt/conda/share/jupyter/kernels/* \
-           /srv/conda/share/jupyter/kernels/* \
-    2>/dev/null || true
+# The base image activates /srv/conda/envs/notebook by default
+# By replacing it with a symlink to CAE, everything "just works":
+# - `which python` returns CAE Python
+# - The default python3 kernel uses CAE Python
+# - Terminal sessions use CAE Python
+# - No kernel manipulation needed
+RUN rm -rf /srv/conda/envs/notebook && \
+    ln -sf /opt/cae-env/.pixi/envs/default /srv/conda/envs/notebook
 
-# Register the CAE kernel as THE system default kernel
-# Install as "python3" so it's the default for ALL notebooks (new and existing)
-# This is the ONLY kernel that will be available
-RUN /srv/conda/envs/cae/bin/python -m ipykernel install \
-    --name python3 \
-    --display-name "Python 3 (ipykernel)"
+# Also create explicit 'cae' symlink for clarity
+RUN ln -sf /opt/cae-env/.pixi/envs/default /srv/conda/envs/cae
 
-# Also register as "cae" for explicit selection (both point to same environment)
-RUN /srv/conda/envs/cae/bin/python -m ipykernel install \
-    --name cae \
-    --display-name "Python [cae]"
+# Verify the default Python is now CAE
+RUN echo "=== Verifying CAE is the default Python ===" && \
+    which python && \
+    python --version && \
+    python -c "import climakitae; print('climakitae OK')" && \
+    python -c "import boto3; print('boto3 OK')" && \
+    python -c "import xarray; print('xarray OK')" && \
+    python -c "import dask; print('dask OK')"
 
-# Verify only our kernels exist
-RUN echo "=== Installed kernels ===" && \
-    jupyter kernelspec list
+# Verify the default kernel uses CAE
+RUN echo "=== Verifying default kernel ===" && \
+    jupyter kernelspec list && \
+    cat /srv/conda/envs/notebook/share/jupyter/kernels/python3/kernel.json 2>/dev/null || \
+    cat /usr/local/share/jupyter/kernels/python3/kernel.json 2>/dev/null || \
+    echo "kernel.json location may vary"
 
-# =============================================================================
-# Set python3 (which IS the cae env) as the DEFAULT kernel
-# =============================================================================
-
-# JupyterLab overrides.json - sets default for JupyterLab UI
-RUN mkdir -p /usr/local/share/jupyter/lab/settings && \
-    echo '{"@jupyterlab/notebook-extension:tracker": {"kernelName": "python3"}}' \
-    > /usr/local/share/jupyter/lab/settings/overrides.json
-
-# Jupyter server config - sets default at server level (affects all frontends)
-RUN mkdir -p /etc/jupyter && \
-    echo "c.MappingKernelManager.default_kernel_name = 'python3'" \
-    >> /etc/jupyter/jupyter_server_config.py
-
-# Keep env var as additional hint (some tools check this)
-ENV JUPYTER_DEFAULT_KERNEL=python3
-
-# Configure VSCode to use CAE Python as default interpreter for .py files
-RUN mkdir -p /etc/skel/.local/share/code-server/User && \
-    echo '{"python.defaultInterpreterPath": "/srv/conda/envs/cae/bin/python", "jupyter.jupyterServerType": "local"}' \
-    > /etc/skel/.local/share/code-server/User/settings.json
-
-# Also set for jovyan user directly (in case /etc/skel isn't used)
+# Switch to user for final setup
 USER ${NB_USER}
 WORKDIR /home/${NB_USER}
-RUN mkdir -p ~/.local/share/code-server/User && \
-    echo '{"python.defaultInterpreterPath": "/srv/conda/envs/cae/bin/python", "jupyter.jupyterServerType": "local"}' \
-    > ~/.local/share/code-server/User/settings.json
 
 # Add labels for tracking
 LABEL maintainer="CAE Team"
-LABEL description="py-rocket-base with CAE kernel (climakitae + pangeo stack)"
+LABEL description="py-rocket-base with CAE as default Python (climakitae + pangeo stack)"
 LABEL base_image="ghcr.io/nmfs-opensci/py-rocket-base:2025.12.22"
-LABEL features="vscode,rstudio,desktop,cae-kernel,pangeo-stack,climakitae,pixi"
+LABEL features="vscode,rstudio,desktop,cae-default,pangeo-stack,climakitae,pixi"

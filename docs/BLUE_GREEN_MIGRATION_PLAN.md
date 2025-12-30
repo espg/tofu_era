@@ -66,6 +66,31 @@ This document outlines the blue/green deployment strategy for migrating CAE Jupy
 
 ---
 
+## Quick Commands Reference
+
+### Check Active Users
+
+Before any migration step, verify no users are logged in:
+
+```bash
+# Quick one-liner - shows active user pods
+kubectl get pods -n daskhub -l component=singleuser-server \
+  -o custom-columns=USER:.metadata.labels.'hub\.jupyter\.org/username',STATUS:.status.phase,AGE:.metadata.creationTimestamp
+
+# Full script with safety checks (exits non-zero if users active)
+./scripts/check-active-users.sh daskhub
+```
+
+### Get Load Balancer Address
+
+```bash
+# Get the NLB hostname for DNS configuration
+kubectl get svc -n daskhub proxy-public \
+  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+```
+
+---
+
 ## Detailed Steps
 
 ### Phase 1: Development Environment Testing
@@ -280,6 +305,157 @@ If you experience any issues, please report them to [SUPPORT_EMAIL]
 
 ---
 
+## Storage Migration: gp2 to gp3
+
+### Overview
+
+The Blue (old) cluster uses **gp2** EBS volumes for user home directories. The Green (new) cluster uses **gp3** volumes, which offer:
+
+| Aspect | gp2 (Blue) | gp3 (Green) |
+|--------|------------|-------------|
+| **IOPS** | 3 IOPS/GB (scales with size) | 3000 IOPS baseline (any size) |
+| **Throughput** | 128 MB/s max | 125 MB/s baseline |
+| **Cost** | ~$0.10/GB/month | ~$0.08/GB/month (20% cheaper) |
+| **Small Volume Performance** | Poor (10GB = 30 IOPS) | Excellent (10GB = 3000 IOPS) |
+
+### User Data Locations
+
+| Data Type | Location | Migration Required? |
+|-----------|----------|---------------------|
+| S3 scratch data | `s3://cadcat-tmp/{user}` | **No** - same bucket, preserved |
+| Home directory | EBS PVC `/home/jovyan` | **Yes** - new PVC on Green |
+| Notebooks (cae-notebooks) | Git-pulled at startup | **No** - auto-pulled |
+| climakitae | Installed at startup or in image | **No** - auto-installed |
+
+### Migration Approach: Fresh Start with S3 Preservation
+
+**Recommended approach**: Users get fresh home directories on Green, but their S3 scratch data is preserved.
+
+**Why this works for CAE**:
+1. S3 (`cadcat-tmp/{user}`) is the primary data store for large datasets
+2. Home directories mainly contain notebooks (git-versioned) and cache files
+3. Users can copy important files to S3 before migration
+
+### Pre-Migration: User Data Backup
+
+**1 week before cutover**, send instructions to users:
+
+```
+Subject: CAE JupyterHub Migration - Please Back Up Your Data
+
+Dear CAE Users,
+
+We're migrating to a new JupyterHub infrastructure on [DATE]. Your S3 scratch
+data (s3://cadcat-tmp/your-username) will be preserved automatically.
+
+However, files in your home directory (/home/jovyan) will NOT be migrated.
+Please back up any important files before [DATE - 2 days]:
+
+Option 1: Copy to S3 (recommended)
+  import s3fs
+  fs = s3fs.S3FileSystem()
+  fs.put('/home/jovyan/my_notebook.ipynb', 's3://cadcat-tmp/YOUR_USERNAME/backup/')
+
+Option 2: Download locally
+  - Right-click files in JupyterLab → Download
+
+Files that do NOT need backup:
+- cae-notebooks/ (auto-pulled from GitHub)
+- .cache/ directories
+- __pycache__/ directories
+```
+
+### Alternative: Full PVC Migration (If Required)
+
+If users have significant data in home directories that must be preserved:
+
+#### Step 1: Identify PVCs to Migrate
+
+```bash
+# On Blue cluster
+kubectl get pvc -n daskhub -o json | jq -r '.items[] | select(.metadata.name | startswith("claim-")) | "\(.metadata.name)\t\(.spec.resources.requests.storage)"'
+```
+
+#### Step 2: Snapshot Blue PVCs
+
+```bash
+# For each user PVC
+USER_PVC="claim-username"
+VOLUME_ID=$(kubectl get pv $(kubectl get pvc $USER_PVC -n daskhub -o jsonpath='{.spec.volumeName}') -o jsonpath='{.spec.awsElasticBlockStore.volumeID}' | cut -d'/' -f4)
+
+aws ec2 create-snapshot \
+  --volume-id $VOLUME_ID \
+  --description "CAE migration: $USER_PVC" \
+  --tag-specifications "ResourceType=snapshot,Tags=[{Key=User,Value=$USER_PVC}]"
+```
+
+#### Step 3: Create gp3 Volumes from Snapshots
+
+```bash
+SNAPSHOT_ID="snap-xxxxx"
+aws ec2 create-volume \
+  --availability-zone us-west-2a \
+  --snapshot-id $SNAPSHOT_ID \
+  --volume-type gp3 \
+  --iops 3000 \
+  --throughput 125 \
+  --tag-specifications "ResourceType=volume,Tags=[{Key=Name,Value=cae-migration-$USER_PVC}]"
+```
+
+#### Step 4: Import to Green Cluster
+
+```bash
+# Create PV pointing to migrated volume
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-migrated-$USERNAME
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: gp3
+  awsElasticBlockStore:
+    volumeID: aws://us-west-2a/vol-xxxxx
+    fsType: ext4
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values:
+          - us-west-2a
+EOF
+```
+
+### Storage Class Configuration
+
+Ensure Green cluster has gp3 as default:
+
+```yaml
+# Configured in tofu_era EKS module
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  iops: "3000"
+  throughput: "125"
+  encrypted: "true"
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+```
+
+---
+
 ## Architecture Comparison
 
 ### Blue (Current)
@@ -293,6 +469,8 @@ If you experience any issues, please report them to [SUPPORT_EMAIL]
 │   └── Dask Gateway
 └── dask-workers (m5.*, spot, 1-30 nodes)
     └── Dask Workers
+
+Storage: gp2 EBS volumes
 ```
 
 ### Green (New)
@@ -307,6 +485,8 @@ If you experience any issues, please report them to [SUPPORT_EMAIL]
 │   └── User Notebooks (isolated!)
 └── dask (m5.*/m5a.*, spot, 0-30 nodes)
     └── Dask Workers
+
+Storage: gp3 EBS volumes (faster, cheaper)
 ```
 
 ---

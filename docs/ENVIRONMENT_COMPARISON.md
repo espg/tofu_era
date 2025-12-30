@@ -91,7 +91,7 @@ service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
 
 | Aspect | cae-jupyterhub | cae (tofu_era) |
 |--------|----------------|----------------|
-| **Version** | 1.29 | 1.31 |
+| **Version** | 1.29 | 1.34 |
 | **Notes** | eksctl cluster.yaml | terraform.tfvars |
 
 #### 6. Instance Types
@@ -288,7 +288,7 @@ service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
 
 | Aspect | cae | englacial |
 |--------|-----|-----------|
-| **Version** | 1.31 | 1.34 |
+| **Version** | 1.34 | 1.34 |
 
 #### 10. User Resource Limits (fallback)
 
@@ -357,7 +357,7 @@ cae-dev is designed to mirror cae production as closely as possible for testing:
 3. **Choice at login**: Select Small (2 CPU) or Medium (4 CPU) notebook
 4. **Isolated Hub**: JupyterHub won't compete with user pods for resources
 5. **Cost savings**: Scale-to-zero for user/worker nodes when idle
-6. **Newer Kubernetes**: 1.31 vs 1.29
+6. **Newer Kubernetes**: 1.34 vs 1.29
 
 ### Preserved Behavior
 1. **Same Cognito login**: No credential changes needed

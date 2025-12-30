@@ -230,3 +230,23 @@ variable "user_node_schedule_min_size_after_hours" {
   type        = number
   default     = 0
 }
+
+# EKS Access Entries - IAM identities that get cluster admin access via the EKS API
+# This provides API-based access in addition to aws-auth ConfigMap
+variable "cluster_admin_roles" {
+  description = "List of IAM roles to grant cluster admin access via EKS Access API"
+  type = list(object({
+    arn      = string
+    username = string
+  }))
+  default = []
+}
+
+variable "cluster_admin_users" {
+  description = "List of IAM users to grant cluster admin access via EKS Access API"
+  type = list(object({
+    arn      = string
+    username = string
+  }))
+  default = []
+}

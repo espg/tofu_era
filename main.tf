@@ -240,6 +240,10 @@ module "eks" {
   user_node_schedule_min_size_during_hours = var.user_node_schedule_min_size_during_hours
   user_node_schedule_min_size_after_hours  = var.user_node_schedule_min_size_after_hours
 
+  # EKS Access Entries - API-based cluster access for admin users/roles
+  cluster_admin_roles = var.cluster_admin_roles
+  cluster_admin_users = var.cluster_admin_users
+
   # Main node group (legacy 2-node architecture)
   main_node_instance_types   = var.main_node_instance_types
   main_node_min_size         = local.main_node_config.min_size

@@ -101,6 +101,43 @@ make sync-promote SYNC_SOURCE=englacial SYNC_TARGET=prod
 
 ---
 
+### 6. [BLUE_GREEN_MIGRATION_PLAN.md](./BLUE_GREEN_MIGRATION_PLAN.md)
+
+**Purpose**: Step-by-step blue/green deployment plan for migrating from cae-jupyterhub to tofu_era.
+
+**Key Topics**:
+- Timeline (2-week migration window)
+- DNS cutover procedure
+- Rollback plan
+- User communication templates
+- **Storage migration: gp2 to gp3**
+- User data backup instructions
+
+**Storage Migration Summary**:
+
+| Data Type | Migration Required? |
+|-----------|---------------------|
+| S3 scratch (`cadcat-tmp`) | No - preserved |
+| Home directory (EBS PVC) | Yes - new gp3 volumes |
+| Notebooks (git) | No - auto-pulled |
+
+---
+
+### 7. [JUPYTERHUB_SSH_RESEARCH.md](./JUPYTERHUB_SSH_RESEARCH.md)
+
+**Purpose**: Research notes on enabling SSH access to JupyterHub via jupyterhub-ssh.
+
+**Key Topics**:
+- How jupyterhub-ssh works
+- Authentication (API tokens, not SSH keys)
+- What works (SSH terminal) vs doesn't work (SCP, port forwarding)
+- Infrastructure requirements (separate NLB)
+- Cost analysis (~$17-21/month)
+
+**Status**: Research complete, not yet implemented.
+
+---
+
 ## Repository Structure
 
 ```
