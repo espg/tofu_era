@@ -319,13 +319,13 @@ variable "enable_profile_selection" {
 variable "singleuser_image_name" {
   description = "Docker image name for single user notebooks"
   type        = string
-  default     = "pangeo/pangeo-notebook"
+  default     = "ghcr.io/espg/cae-notebook"
 }
 
 variable "singleuser_image_tag" {
   description = "Docker image tag for single user notebooks"
   type        = string
-  default     = "2024.04.08" # Compatible with DaskHub 2024.1.1 (JupyterHub 4.0.2)
+  default     = "latest"
 }
 
 # User Resource Limits
@@ -502,15 +502,15 @@ variable "external_cognito_domain" {
 
 # Lifecycle Hooks Configuration
 variable "lifecycle_hooks_enabled" {
-  description = "Enable lifecycle hooks for custom package installation at pod startup"
+  description = "Enable lifecycle hooks for pulling CAE notebooks at pod startup"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "lifecycle_post_start_command" {
   description = "Command to run after container starts (shell command as list)"
   type        = list(string)
-  default     = ["sh", "-c", "echo 'No post-start hook configured'"]
+  default     = ["sh", "-c", "python -m nbgitpuller https://github.com/cal-adapt/cae-notebooks main cae-notebooks || true"]
 }
 
 # Existing S3 Bucket Configuration

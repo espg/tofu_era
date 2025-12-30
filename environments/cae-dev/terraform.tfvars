@@ -97,18 +97,9 @@ dask_worker_cores_max  = 4
 dask_worker_memory_max = 16
 dask_cluster_max_cores = 20
 
-# Container Image - Custom CAE image with climakitae + pangeo stack + VSCode/RStudio
-# Built from: docker/Dockerfile.cae (extends py-rocket-base)
-# Includes: climakitae, climakitaegui, full pangeo stack, VSCode, RStudio, Desktop
-singleuser_image_name = "ghcr.io/espg/cae-notebook"
-singleuser_image_tag  = "latest"
-
-# Lifecycle Hooks - Only pull CAE notebooks (climakitae already in image)
-lifecycle_hooks_enabled = true
-lifecycle_post_start_command = [
-  "sh", "-c",
-  "python -m nbgitpuller https://github.com/cal-adapt/cae-notebooks main cae-notebooks || true"
-]
+# Container Image & Lifecycle Hooks: Uses defaults from variables.tf
+# - ghcr.io/espg/cae-notebook:latest (CAE image with climakitae + pangeo stack)
+# - Pulls cae-notebooks repo on startup via nbgitpuller
 
 # Idle Timeouts - Aggressive for dev
 kernel_cull_timeout = 600  # 10 minutes

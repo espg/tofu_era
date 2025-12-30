@@ -90,19 +90,9 @@ dask_worker_cores_max  = 2
 dask_worker_memory_max = 8
 dask_cluster_max_cores = 10
 
-# Container Image
-# Custom CAE image based on py-rocket-base with:
-# - VSCode (code-server), RStudio, Desktop from py-rocket-base
-# - Dedicated "cae" conda environment with full pangeo stack + climakitae
-# - "cae" kernel set as default for new notebooks
-# See: docker/Dockerfile.cae and docs/CONTAINER_REGISTRY.md
-singleuser_image_name = "ghcr.io/espg/cae-notebook"
-singleuser_image_tag  = "latest"
-
-# Lifecycle Hooks - DISABLED (all dependencies baked into image)
-# The cae kernel includes climakitae, boto3, and full pangeo stack
-lifecycle_hooks_enabled      = false
-lifecycle_post_start_command = ["sh", "-c", "echo 'Dependencies pre-installed in cae kernel'"]
+# Container Image & Lifecycle Hooks: Uses defaults from variables.tf
+# - ghcr.io/espg/cae-notebook:latest (CAE image with climakitae + pangeo stack)
+# - Pulls cae-notebooks repo on startup via nbgitpuller
 
 # Idle Timeouts - Very aggressive for testing
 kernel_cull_timeout = 300 # 5 minutes
