@@ -334,6 +334,12 @@ variable "use_ecr_pull_through_cache" {
   default     = true
 }
 
+variable "github_username" {
+  description = "GitHub username for ECR pull-through cache authentication. Used with github.token from SOPS secrets."
+  type        = string
+  default     = "espg"  # Default to repo owner
+}
+
 # User Resource Limits
 variable "user_cpu_guarantee" {
   description = "CPU cores guaranteed per user"

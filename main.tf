@@ -155,17 +155,41 @@ data "aws_availability_zones" "available" {
 # ECR Pull-Through Cache for faster image pulls
 # =============================================================================
 # Caches ghcr.io images in regional ECR, reducing pull time from ~3min to ~30sec
+# Requires GitHub PAT with read:packages scope stored in Secrets Manager
+
+# Secrets Manager secret for GitHub Container Registry authentication
+resource "aws_secretsmanager_secret" "ghcr_credentials" {
+  count = local.use_cached_image && local.github_token != "" ? 1 : 0
+
+  name        = "${local.cluster_name}-ghcr-credentials"
+  description = "GitHub Container Registry credentials for ECR pull-through cache"
+  tags        = local.common_tags
+}
+
+resource "aws_secretsmanager_secret_version" "ghcr_credentials" {
+  count = local.use_cached_image && local.github_token != "" ? 1 : 0
+
+  secret_id = aws_secretsmanager_secret.ghcr_credentials[0].id
+  secret_string = jsonencode({
+    username    = var.github_username
+    accessToken = local.github_token
+  })
+}
+
 # The cache rule is account-wide; if it already exists, this is a no-op
 resource "aws_ecr_pull_through_cache_rule" "ghcr" {
   count = local.use_cached_image ? 1 : 0
 
   ecr_repository_prefix = "ghcr"
   upstream_registry_url = "ghcr.io"
+  credential_arn        = local.github_token != "" ? aws_secretsmanager_secret.ghcr_credentials[0].arn : null
 
   # Ignore if rule already exists (created by another environment)
   lifecycle {
-    ignore_changes = [ecr_repository_prefix, upstream_registry_url]
+    ignore_changes = [ecr_repository_prefix, upstream_registry_url, credential_arn]
   }
+
+  depends_on = [aws_secretsmanager_secret_version.ghcr_credentials]
 }
 
 # Module: Networking
