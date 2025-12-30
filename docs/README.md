@@ -4,6 +4,10 @@ This directory contains documentation for the tofu_era project - an OpenTofu-bas
 
 ## Documents
 
+### 0. [SHANE_ARCHITECTURE_NOTES.md](./SHANE_ARCHITECTURE_NOTES.md)
+
+Overview of how things work (and why)
+
 ### 1. [GITHUB_ACTIONS_OPENTOFU.md](./GITHUB_ACTIONS_OPENTOFU.md)
 
 **Purpose**: Guide for setting up GitHub Actions to trigger OpenTofu builds on git commits.
