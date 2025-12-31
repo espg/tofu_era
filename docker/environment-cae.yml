@@ -21,6 +21,8 @@ dependencies:
   # Jupyter ecosystem
   # =============================================================================
   - jupyterhub  # Required for jupyterhub-singleuser command
+  - jupyter-server-proxy  # Required for VSCode/RStudio proxying
+  - jupyter-vscode-proxy  # VSCode integration (access at /vscode)
   - jupyter-book
   - jupyter-resource-usage
   - jupyter_scheduler
