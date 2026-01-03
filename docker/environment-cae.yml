@@ -24,6 +24,7 @@ dependencies:
   - jupyter-server-proxy  # Required for VSCode/RStudio proxying
   - jupyter-vscode-proxy  # VSCode integration (access at /vscode)
   - jupyter-rsession-proxy  # RStudio integration (access at /rstudio)
+  - code-server>=4.98  # VSCode backend - required since we replace the base notebook env
   - jupyter-book
   - jupyter-resource-usage
   - jupyter_scheduler
