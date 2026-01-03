@@ -162,11 +162,23 @@ resource "helm_release" "daskhub" {
   version          = "2024.1.1"
   namespace        = "daskhub"
   create_namespace = false # Namespace created by kubernetes module
-  timeout          = 1200 # 20 minutes - needed for pre-pulling large container images
+  timeout          = 1200  # 20 minutes - needed for pre-pulling large container images
+
+  # Better error handling
+  wait            = true
+  wait_for_jobs   = true
+  atomic          = false # Don't auto-rollback on failure so we can debug
+  cleanup_on_fail = false # Keep failed release for debugging
 
   # JupyterHub Configuration
   values = [
     yamlencode({
+      # Disable pre-install hook that can timeout in slow deployments
+      daskhub = {
+        rbac = {
+          enabled = true
+        }
+      }
       jupyterhub = {
         # Singleuser config with profile selection (Small/Medium instance sizes)
         singleuser = local.singleuser_config
