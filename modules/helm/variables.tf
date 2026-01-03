@@ -171,13 +171,17 @@ variable "cognito_logout_url" {
 variable "lifecycle_hooks_enabled" {
   description = "Enable lifecycle hooks for custom package installation"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "lifecycle_post_start_command" {
-  description = "Command to run after container starts"
+  description = "Command to run after container starts (installs latest climakitae and clones notebooks)"
   type        = list(string)
-  default     = ["sh", "-c", "echo 'No post-start hook configured'"]
+  default = [
+    "sh",
+    "-c",
+    "/srv/conda/envs/notebook/bin/pip install --no-deps -e git+https://github.com/cal-adapt/climakitae.git#egg=climakitae -e git+https://github.com/cal-adapt/climakitaegui.git#egg=climakitaegui; /srv/conda/envs/notebook/bin/gitpuller https://github.com/cal-adapt/cae-notebooks main cae-notebooks || true"
+  ]
 }
 
 variable "region" {

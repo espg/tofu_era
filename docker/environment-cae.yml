@@ -164,7 +164,9 @@ dependencies:
   # =============================================================================
   # pip packages (not on conda-forge or need specific versions)
   # =============================================================================
-  - pip:
-    # CAE-specific packages
-    - climakitae
-    - climakitaegui
+  # NOTE: climakitae and climakitaegui are installed via postStart lifecycle hook
+  # to ensure users always get the latest version from git without rebuilding the image
+  # See: modules/helm/variables.tf lifecycle_post_start_command
+  # - pip:
+  #   - climakitae
+  #   - climakitaegui
