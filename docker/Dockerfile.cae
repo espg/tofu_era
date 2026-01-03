@@ -1,11 +1,12 @@
 # CAE JupyterHub Custom Image
-# Extends py-rocket-base with full Pangeo stack + climakitae as the DEFAULT Python
+# Extends py-rocket-base with full Pangeo stack as the DEFAULT Python
 #
 # Features:
 # - VSCode, RStudio, Desktop (from py-rocket-base)
-# - CAE environment (climakitae + full pangeo stack) REPLACES the default notebook env
+# - CAE environment (full pangeo stack) REPLACES the default notebook env
 # - `which python` returns the CAE Python - no kernel confusion
 # - Uses pixi for fast dependency resolution (~2-3 min vs 10-15 min with mamba)
+# - climakitae installed at runtime via postStart lifecycle hook (always latest)
 #
 # Build:
 #   docker build -f Dockerfile.cae -t cae-notebook:latest .
@@ -50,13 +51,14 @@ RUN rm -rf /srv/conda/envs/notebook && \
 RUN ln -sf /opt/cae-env/.pixi/envs/default /srv/conda/envs/cae
 
 # Verify the default Python is now CAE
+# Note: climakitae is installed at runtime via postStart hook, not in the image
 RUN echo "=== Verifying CAE is the default Python ===" && \
     which python && \
     python --version && \
-    python -c "import climakitae; print('climakitae OK')" && \
     python -c "import boto3; print('boto3 OK')" && \
     python -c "import xarray; print('xarray OK')" && \
-    python -c "import dask; print('dask OK')"
+    python -c "import dask; print('dask OK')" && \
+    python -c "import hvplot; print('hvplot OK')"
 
 # Verify the default kernel uses CAE
 RUN echo "=== Verifying default kernel ===" && \
@@ -85,6 +87,6 @@ WORKDIR /home/${NB_USER}
 
 # Add labels for tracking
 LABEL maintainer="CAE Team"
-LABEL description="py-rocket-base with CAE as default Python (climakitae + pangeo stack)"
+LABEL description="py-rocket-base with CAE as default Python (pangeo stack, climakitae via postStart)"
 LABEL base_image="ghcr.io/nmfs-opensci/py-rocket-base:2025.12.22"
-LABEL features="vscode,rstudio,desktop,cae-default,pangeo-stack,climakitae,pixi"
+LABEL features="vscode,rstudio,desktop,cae-default,pangeo-stack,pixi"
