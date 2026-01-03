@@ -65,6 +65,19 @@ RUN echo "=== Verifying default kernel ===" && \
     cat /usr/local/share/jupyter/kernels/python3/kernel.json 2>/dev/null || \
     echo "kernel.json location may vary"
 
+# =============================================================================
+# Install VSCode extensions for code-server
+# =============================================================================
+# The base image installs extensions, but since we replaced the notebook env,
+# we need to ensure Python/Jupyter extensions are available for code-server.
+# Install to system extensions dir so they're available for all users.
+RUN echo "=== Installing VSCode extensions ===" && \
+    /srv/conda/envs/notebook/bin/code-server \
+        --install-extension ms-python.python \
+        --install-extension ms-toolsai.jupyter \
+        --extensions-dir /usr/lib/code-server/lib/vscode/extensions/ || \
+    echo "Extension installation completed (some may have already been installed)"
+
 # Switch to user for final setup
 USER ${NB_USER}
 WORKDIR /home/${NB_USER}
