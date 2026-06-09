@@ -13,7 +13,7 @@
 # Test locally:
 #   docker run -p 8888:8888 cae-notebook:test
 
-ARG BASE_TAG=2025.12.22
+ARG BASE_TAG=latest
 FROM ghcr.io/nmfs-opensci/py-rocket-base:${BASE_TAG}
 
 USER root
@@ -58,7 +58,7 @@ RUN uv pip install \
     black \
     seaborn \
     jupyterhub \
-    jupyterlab>=4 \
+    jupyterlab>=4.5.8 \
     jupyter-server-proxy \
     jupyter-resource-usage \
     jupyter-vscode-proxy \
