@@ -52,10 +52,15 @@ provider "aws" {
     tags = local.common_tags
   }
 
-  # Assume role if route53_role_arn is provided (cross-account)
-  assume_role {
-    role_arn     = var.route53_role_arn != "" ? var.route53_role_arn : null
-    session_name = var.route53_role_arn != "" ? "tofu-route53-${var.environment}" : null
+  # Assume role only when a cross-account role ARN is provided.
+  # A dynamic block avoids emitting an empty assume_role (which warns
+  # "role_arn is required") for the same-account case where it's "".
+  dynamic "assume_role" {
+    for_each = var.route53_role_arn != "" ? [1] : []
+    content {
+      role_arn     = var.route53_role_arn
+      session_name = "tofu-route53-${var.environment}"
+    }
   }
 }
 
