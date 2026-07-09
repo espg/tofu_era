@@ -242,3 +242,16 @@ jobs:
           echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           tofu output -json | jq -r 'to_entries[] | "- **\(.key)**: \(.value.value)"' >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
+          # Resolve the actual K8s-managed load balancer URL. The proxy-public LB is
+          # created by Helm inside the cluster, so its hostname is NOT in tofu outputs
+          # unless Route53 is enabled. Query it directly so every env (including
+          # domainless cae-testing) surfaces a usable hub_endpoint in the summary.
+          CLUSTER=$(tofu output -raw cluster_name 2>/dev/null || true)
+          if [ -n "$CLUSTER" ]; then
+            aws eks update-kubeconfig --region "${{ env.AWS_REGION }}" --name "$CLUSTER" >/dev/null 2>&1 || true
+            LB=$(kubectl get svc -n daskhub proxy-public \
+                   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+            if [ -n "$LB" ]; then
+              echo "- **hub_endpoint**: http://$LB" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
