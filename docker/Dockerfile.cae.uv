@@ -1,0 +1,139 @@
+# CAE JupyterHub Custom Image with uv
+# Extends py-rocket-base with climakitae as the DEFAULT Python environment
+#
+# Features:
+# - VSCode, RStudio, Desktop (from py-rocket-base)
+# - climakitae + full Jupyter stack as default kernel
+# - Uses uv for fast, deterministic package installation
+# - Single virtual environment replaces base notebook env
+#
+# Build:
+#   docker build -f Dockerfile.cae.uv -t cae-notebook:test .
+#
+# Test locally:
+#   docker run -p 8888:8888 cae-notebook:test
+
+ARG BASE_TAG=latest
+FROM ghcr.io/nmfs-opensci/py-rocket-base:${BASE_TAG}
+
+USER root
+
+# Install uv for fast Python package management
+RUN curl -LsSf https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-unknown-linux-gnu.tar.gz \
+    | tar -xz -C /usr/local/bin --strip-components=1 && \
+    uv --version
+
+# Install awscli v2 for S3 access
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip" && \
+    unzip /tmp/awscliv2.zip -d /tmp && \
+    /tmp/aws/install && \
+    rm -rf /tmp/aws /tmp/awscliv2.zip
+
+# Install rclone for cloud storage access
+RUN curl -sSL https://rclone.org/install.sh | bash
+
+# =============================================================================
+# Create Python environment directly in /srv/conda/envs/notebook
+# =============================================================================
+# By creating the venv directly where it's used, we avoid symlink issues
+WORKDIR /srv/conda/envs/notebook
+
+# Create virtual environment with Python 3.12
+RUN uv venv --python 3.12
+
+# Install all packages needed for JupyterHub with climakitae
+# climakitae brings xarray, dask, pandas, numpy, and scientific stack
+RUN uv pip install \
+    --python /srv/conda/envs/notebook/bin/python \
+    climakitae \
+    cartopy \
+    panel \
+    hvplot \
+    folium \
+    mapclassify \
+    geoviews \
+    bokeh \
+    plotly \
+    pytest \
+    black \
+    seaborn \
+    jupyterhub \
+    jupyterlab>=4.5.8 \
+    jupyter-server-proxy \
+    jupyter-resource-usage \
+    jupyter-vscode-proxy \
+    jupyter-rsession-proxy \
+    jupyterlab-git \
+    jupyterlab-lsp \
+    nbgitpuller \
+    ipykernel \
+    ipywidgets>=8 \
+    dask-gateway \
+    dask-labextension \
+    jupytext \
+    ipdb
+
+# Register the kernel with proper display name
+RUN /srv/conda/envs/notebook/bin/python -m ipykernel install \
+    --prefix=/srv/conda/envs/notebook \
+    --name python3 \
+    --display-name "Python 3 (climakitae)"
+
+# Create 'cae' symlink for backward compatibility
+RUN ln -s /srv/conda/envs/notebook /srv/conda/envs/cae
+
+# Configure pip to prefer user installs and upgrade packages
+# This ensures pip install --user works even when packages exist in base environment
+RUN mkdir -p /tmp/pip && \
+    echo "[global]" > /tmp/pip_config.ini && \
+    echo "upgrade-strategy = eager" >> /tmp/pip_config.ini && \
+    echo "no-input = True" >> /tmp/pip_config.ini
+
+# Verify installation by checking key packages can be imported
+RUN /srv/conda/envs/notebook/bin/python -c "import climakitae; import xarray; import dask; import jupyterlab; print('✓ All core packages installed')"
+
+# Set notebook env as default for system shell
+ENV PATH=/srv/conda/envs/notebook/bin:$PATH
+ENV CONDA_DEFAULT_ENV=notebook
+ENV CONDA_PREFIX=/srv/conda/envs/notebook
+
+# Fix matplotlib config directory issue that hangs VSCode startup
+# Create writable matplotlib cache directory
+RUN mkdir -p /tmp/matplotlib && \
+    chmod 777 /tmp/matplotlib && \
+    mkdir -p ${HOME}/.config/matplotlib && \
+    chmod 777 ${HOME}/.config/matplotlib
+
+ENV MPLCONFIGDIR=/tmp/matplotlib
+ENV MATPLOTLIBRC=/tmp/matplotlib
+
+# Note: Keeping base image's default entrypoint for JupyterHub compatibility
+# The base image will use jupyterhub-singleuser when deployed in JupyterHub
+# For local testing: docker run -p 8888:8888 <image> jupyter lab --ip=0.0.0.0 --no-browser --allow-root
+
+# Switch to user for JupyterHub
+USER ${NB_USER}
+WORKDIR /home/${NB_USER}
+
+# Configure pip for user installations
+# This ensures pip install --user works correctly even when packages exist in base environment
+RUN mkdir -p ~/.pip && \
+    echo "[global]" > ~/.pip/pip.conf && \
+    echo "upgrade-strategy = eager" >> ~/.pip/pip.conf && \
+    echo "no-input = True" >> ~/.pip/pip.conf
+
+# Install code-server extensions as user
+RUN /srv/conda/envs/notebook/bin/code-server --install-extension aaron-bond.better-comments && \
+    /srv/conda/envs/notebook/bin/code-server --install-extension ms-python.black-formatter && \
+    /srv/conda/envs/notebook/bin/code-server --install-extension github.vscode-github-actions && \
+    /srv/conda/envs/notebook/bin/code-server --install-extension github.vscode-pull-request-github && \
+    /srv/conda/envs/notebook/bin/code-server --install-extension ms-python.pylint && \
+    /srv/conda/envs/notebook/bin/code-server --install-extension mechatroner.rainbow-csv && \
+    /srv/conda/envs/notebook/bin/code-server --install-extension amazonwebservices.aws-toolkit-vscode
+
+# Add labels for tracking
+LABEL maintainer="Cal-Adapt Analytics Engine development team"
+LABEL description="py-rocket-base with climakitae (uv-based installation)"
+LABEL base_image="ghcr.io/nmfs-opensci/py-rocket-base:2025.12.22"
+LABEL package_manager="uv"
+LABEL features="climakitae,jupyter,dask,vscode,rstudio,desktop"

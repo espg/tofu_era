@@ -54,7 +54,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./docker
-          file: ./docker/Dockerfile.cae
+          file: ./docker/Dockerfile.cae.uv
           push: true
           tags: ${{ steps.tags.outputs.tags }}
           cache-from: type=gha

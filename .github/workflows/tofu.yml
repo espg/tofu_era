@@ -230,14 +230,50 @@ jobs:
           name: tfplan-${{ matrix.environment }}
 
       - name: Initialize and Apply
+        id: apply
         run: |
           # Use Makefile for init (handles secrets, backend setup)
           make init ENVIRONMENT=${{ matrix.environment }}
           # Apply the exact plan from the plan job
           tofu apply -auto-approve tfplan
+        continue-on-error: true
+
+      - name: Debug Helm failures
+        if: steps.apply.outcome == 'failure'
+        run: |
+          echo "## Debugging Helm Release Failure" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Get Helm release status
+          echo "### Helm Release Status" >> $GITHUB_STEP_SUMMARY
+          helm list -n daskhub || true
+          helm status daskhub -n daskhub >> $GITHUB_STEP_SUMMARY 2>&1 || true
+
+          # Get pod status
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Pod Status" >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n daskhub >> $GITHUB_STEP_SUMMARY 2>&1 || true
+
+          # Get events
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Recent Events" >> $GITHUB_STEP_SUMMARY
+          kubectl get events -n daskhub --sort-by='.lastTimestamp' | tail -20 >> $GITHUB_STEP_SUMMARY 2>&1 || true
+
+          # Get logs from failed pods
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Failed Pod Logs" >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n daskhub --field-selector=status.phase!=Running,status.phase!=Succeeded -o name 2>/dev/null | while read pod; do
+            echo "#### Logs for $pod" >> $GITHUB_STEP_SUMMARY
+            kubectl logs -n daskhub $pod --tail=50 >> $GITHUB_STEP_SUMMARY 2>&1 || true
+          done
+
+      - name: Fail if apply failed
+        if: steps.apply.outcome == 'failure'
+        run: exit 1
 
       - name: Get outputs
         id: output
+        if: steps.apply.outcome == 'success'
         run: |
           echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

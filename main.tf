@@ -405,9 +405,11 @@ module "helm" {
   dask_cluster_max_cores = var.dask_cluster_max_cores
 
   # Idle timeouts
-  kernel_cull_timeout = var.kernel_cull_timeout
-  server_cull_timeout = var.server_cull_timeout
-  dask_idle_timeout   = var.dask_idle_timeout
+  kernel_cull_timeout   = var.kernel_cull_timeout
+  server_cull_timeout   = var.server_cull_timeout
+  dask_idle_timeout     = var.dask_idle_timeout
+  kernel_cull_connected = var.kernel_cull_connected
+  kernel_cull_interval  = var.kernel_cull_interval
 
   # Cluster autoscaler
   region = var.region

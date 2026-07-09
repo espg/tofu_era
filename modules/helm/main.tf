@@ -54,6 +54,12 @@ locals {
     serviceAccountName = var.user_service_account
     startTimeout       = 600
     defaultUrl         = var.default_url
+    # Match the gid of the `jovyan` user in py-rocket-base / cae-notebook images (gid=1000).
+    # The image's /srv/start entrypoint runs `chown -R jovyan:jovyan ~/vscode`, which fails
+    # with `Operation not permitted` if the pod's primary gid does not match jovyan's gid.
+    # Z2JH's chart default fsGid is 100; we override to 1000 so EBS mounts come up writable
+    # by the matching group and chown is a no-op.
+    fsGid = 1000
     image = {
       name = var.singleuser_image_name
       tag  = var.singleuser_image_tag
@@ -62,6 +68,13 @@ locals {
       DASK_GATEWAY__ADDRESS                 = "http://proxy-public/services/dask-gateway"
       DASK_GATEWAY__CLUSTER__OPTIONS__IMAGE = "{{JUPYTER_IMAGE_SPEC}}"
       SCRATCH_BUCKET                        = "s3://${var.s3_bucket}/$(JUPYTERHUB_USER)"
+      # Ensure user installs are preferred
+      PIP_USER       = "1"
+      PYTHONUSERBASE = "/home/jovyan/.local"
+      # Force pip to upgrade packages and avoid skipping already-installed packages
+      PIP_UPGRADE_STRATEGY = "eager"
+      # Ensure user site-packages and editable installs take precedence over system packages
+      PYTHONPATH = "/home/jovyan/.local/lib/python3.12/site-packages"
     }
     lifecycleHooks = var.lifecycle_hooks_enabled ? {
       postStart = {
@@ -76,8 +89,8 @@ locals {
         data = {
           MappingKernelManager = {
             cull_idle_timeout = var.kernel_cull_timeout
-            cull_interval     = 120
-            cull_connected    = true
+            cull_interval     = var.kernel_cull_interval
+            cull_connected    = var.kernel_cull_connected
             cull_busy         = false
           }
         }
@@ -237,10 +250,14 @@ resource "helm_release" "daskhub" {
             # KubeSpawner Configuration
             # Fix for terminal spawning issue - allowPrivilegeEscalation must be true for terminals to work
             # See: https://discourse.jupyter.org/t/singleuser-allowprivilegeescalation-not-work/14298
+            #
+            # runAsGroup must be 1000 to match the `jovyan` group's gid in py-rocket-base/cae-notebook
+            # images. The image's /srv/start entrypoint runs `chown -R jovyan:jovyan ~/vscode`, which
+            # fails (Operation not permitted) if the process's primary gid is not 1000.
             KubeSpawner = {
               container_security_context = {
                 runAsUser                = 1000
-                runAsGroup               = 100
+                runAsGroup               = 1000
                 allowPrivilegeEscalation = true # Required for JupyterLab terminals to function properly
               }
             }
@@ -290,6 +307,15 @@ resource "helm_release" "daskhub" {
               admin   = false
             }
           } : {}
+        }
+        # JupyterHub Idle Culler (server-level culling)
+        # Uses JupyterHub's cull service to stop idle user servers
+        cull = {
+          enabled            = true
+          timeout            = var.server_cull_timeout
+          every              = 120
+          users              = false # CRITICAL: Don't delete users - only stop servers. Setting to true deletes user accounts and PVCs!
+          removeNamedServers = false # CRITICAL: Keep server records to preserve PVC associations
         }
         # Image pre-puller configuration
         # When enabled, only pre-pull the default image (not all profile images)

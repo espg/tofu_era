@@ -1,3 +1,11 @@
+# ⚠️  DEPRECATED - Use Dockerfile.cae.uv instead
+#
+# This Dockerfile uses pixi/conda and is no longer maintained.
+# The project has migrated to uv for faster, more reliable builds.
+#
+# For new builds, use: docker build -f Dockerfile.cae.uv -t cae-notebook:latest .
+# See docs/UV_MIGRATION.md for details.
+
 # CAE JupyterHub Custom Image
 # Extends py-rocket-base with full Pangeo stack as the DEFAULT Python
 #
@@ -49,6 +57,20 @@ RUN rm -rf /srv/conda/envs/notebook && \
 
 # Also create explicit 'cae' symlink for clarity
 RUN ln -sf /opt/cae-env/.pixi/envs/default /srv/conda/envs/cae
+
+# Configure pip to prefer user installs and upgrade packages
+# This ensures pip install --user works even when packages exist in conda environment
+RUN mkdir -p /home/${NB_USER}/.pip && \
+    cat > /home/${NB_USER}/.pip/pip.conf << 'EOF'
+[global]
+# Upgrade strategy: when using --user, always upgrade dependencies (eager)
+# This prevents "already satisfied" skips when package exists in conda env
+upgrade-strategy = eager
+# No input prompts
+no-input = True
+EOF
+
+# Also create explicit 'cae' symlink for clarity
 
 # Verify the default Python is now CAE
 # Note: climakitae is installed at runtime via postStart hook, not in the image
