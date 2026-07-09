@@ -73,6 +73,14 @@ jobs:
         run: |
           tofu init -backend-config=environments/${{ github.event.inputs.environment }}/backend.tfvars
 
+      # Delete Kubernetes-managed load balancers and wait for their ENIs to clear
+      # BEFORE tofu touches networking. Without this, leftover ELB ENIs block
+      # subnet/VPC deletion, destroy errors partway, and NAT/VPC/EIP orphan-bill.
+      # Non-fatal when the cluster is already gone (script handles that itself).
+      - name: Pre-destroy drain (K8s load balancers)
+        run: |
+          bash scripts/pre-destroy-drain.sh "${{ github.event.inputs.environment }}" "${{ env.AWS_REGION }}"
+
       - name: Plan Destroy
         run: |
           echo "## Destroy Plan" >> $GITHUB_STEP_SUMMARY
@@ -93,6 +101,13 @@ jobs:
         run: |
           echo "Destroying environment: ${{ github.event.inputs.environment }}"
           tofu apply -auto-approve tfplan-destroy
+
+      # Ask AWS directly whether anything remains (tagged resources, NAT, VPC,
+      # EIP, EKS, LBs). Fails the job loudly if the destroy left orphans so a
+      # regression surfaces today, not on the next billing cycle.
+      - name: Verify clean teardown
+        run: |
+          bash scripts/verify-clean-teardown.sh "${{ github.event.inputs.environment }}" "${{ env.AWS_REGION }}"
 
       - name: Summary
         run: |
