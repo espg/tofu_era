@@ -337,7 +337,7 @@ variable "use_ecr_pull_through_cache" {
 variable "github_username" {
   description = "GitHub username for ECR pull-through cache authentication. Used with github.token from SOPS secrets."
   type        = string
-  default     = "espg"  # Default to repo owner
+  default     = "espg" # Default to repo owner
 }
 
 # User Resource Limits
@@ -604,4 +604,23 @@ variable "enable_continuous_image_puller" {
   description = "Enable continuous image puller to pre-pull images on nodes. Disable for small test clusters."
   type        = bool
   default     = true
+}
+
+# Route53 DNS Configuration
+variable "manage_route53_dns" {
+  description = "Automatically create/update Route53 DNS record for the load balancer and ACM validation records"
+  type        = bool
+  default     = false
+}
+
+variable "route53_zone_name" {
+  description = "Route53 hosted zone name (e.g., 'geopotential.org'). Required if manage_route53_dns is true."
+  type        = string
+  default     = ""
+}
+
+variable "route53_role_arn" {
+  description = "IAM role ARN to assume for Route53 operations. Required only when the Route53 zone is in a different AWS account; leave empty for a same-account zone."
+  type        = string
+  default     = ""
 }

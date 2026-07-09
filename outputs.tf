@@ -331,6 +331,26 @@ output "monitoring_urls" {
   } : null
 }
 
+# Route53 DNS Management
+output "route53_dns_record" {
+  description = "Route53 DNS record created for JupyterHub"
+  value = var.manage_route53_dns && var.enable_jupyterhub ? {
+    name   = aws_route53_record.jupyterhub[0].name
+    type   = aws_route53_record.jupyterhub[0].type
+    value  = one(aws_route53_record.jupyterhub[0].records)
+    status = "Managed by OpenTofu - auto-updates on apply"
+  } : null
+}
+
+output "load_balancer_hostname" {
+  description = "Load balancer hostname for manual DNS configuration"
+  value = var.manage_route53_dns && var.enable_jupyterhub ? (
+    "Managed by Route53 - see route53_dns_record output"
+    ) : (
+    var.enable_jupyterhub ? "Run: kubectl get svc -n daskhub proxy-public -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'" : "N/A"
+  )
+}
+
 # Maintenance Commands
 output "maintenance_commands" {
   description = "Useful maintenance commands"
