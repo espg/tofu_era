@@ -90,6 +90,15 @@ lbs=$(aws elbv2 describe-load-balancers --region "$REGION" \
   --output text 2>/dev/null || true)
 if [ -n "$lbs" ]; then echo "[verify] FAIL load balancers: $lbs" >&2; fail=1; fi
 
+# Orphaned user home EBS volumes -- the failure mode pre-destroy-drain.sh guards
+# against. Volumes are tagged KubernetesCluster=<cluster> by the gp3 StorageClass
+# (modules/kubernetes/main.tf), so any left after destroy are true orphans.
+echo "[verify] EBS volumes tagged KubernetesCluster=$CLUSTER"
+vols=$(aws ec2 describe-volumes --region "$REGION" \
+  --filters "Name=tag:KubernetesCluster,Values=${CLUSTER}" \
+  --query 'Volumes[?State!=`deleting`].VolumeId' --output text 2>/dev/null || true)
+if [ -n "$vols" ]; then echo "[verify] FAIL EBS volumes: $vols" >&2; fail=1; fi
+
 if [ "$fail" -ne 0 ]; then
   cat >&2 <<EOF
 

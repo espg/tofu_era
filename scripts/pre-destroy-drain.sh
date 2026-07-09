@@ -46,6 +46,47 @@ if aws eks describe-cluster --region "$REGION" --name "$CLUSTER" >/dev/null 2>&1
 
   echo "[drain] deleting Ingresses cluster-wide"
   kubectl delete ingress -A --all --wait=true --timeout=5m --ignore-not-found || true
+
+  # Delete user PVCs so the gp3 StorageClass's reclaimPolicy=Delete actually runs
+  # WHILE the EBS CSI controller is still alive. Otherwise tofu destroy tears the
+  # cluster out from under the PVCs and the backing EBS volumes orphan -- billing
+  # forever, with no data evacuation. Set KEEP_USER_VOLUMES=1 to skip (e.g. to
+  # preserve homes for a manual reattach; see issue #6 / Option A).
+  if [ "${KEEP_USER_VOLUMES:-0}" = "1" ]; then
+    echo "[drain] KEEP_USER_VOLUMES=1 set; leaving PVCs/EBS volumes in place"
+  else
+    # Capture the EBS volume IDs backing current PVs BEFORE deleting anything,
+    # so we can wait for their actual deletion afterward.
+    VOL_IDS=$(kubectl get pv -o jsonpath='{range .items[?(@.spec.csi.driver=="ebs.csi.aws.com")]}{.spec.csi.volumeHandle}{"\n"}{end}' 2>/dev/null || true)
+
+    echo "[drain] stopping singleuser servers so their PVCs can be released"
+    kubectl delete pods -A -l component=singleuser-server --wait=true --timeout=3m --ignore-not-found || true
+
+    echo "[drain] deleting PVCs cluster-wide (reclaimPolicy=Delete removes the EBS volumes)"
+    kubectl delete pvc -A --all --wait=true --timeout=5m --ignore-not-found || true
+
+    if [ -n "$VOL_IDS" ]; then
+      echo "[drain] waiting for backing EBS volumes to delete (up to 10 min)"
+      remaining=""
+      for i in $(seq 1 60); do
+        remaining=""
+        for v in $VOL_IDS; do
+          aws ec2 describe-volumes --region "$REGION" --volume-ids "$v" >/dev/null 2>&1 && remaining="$remaining $v"
+        done
+        if [ -z "$remaining" ]; then
+          echo "[drain] all user EBS volumes deleted after $((i * 10))s"
+          break
+        fi
+        echo "[drain] EBS volumes still deleting:$remaining ($((i * 10))/600s)"
+        sleep 10
+      done
+      if [ -n "$remaining" ]; then
+        echo "[drain] WARNING: EBS volumes did not delete within 10 min:$remaining" >&2
+        echo "[drain] Proceeding with destroy anyway (cluster teardown saves the most cost)." >&2
+        echo "[drain] verify-clean-teardown.sh will flag them; delete manually to avoid EBS charges." >&2
+      fi
+    fi
+  fi
 else
   echo "[drain] cluster $CLUSTER not found in EKS; skipping k8s drain"
 fi
