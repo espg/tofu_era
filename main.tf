@@ -42,6 +42,23 @@ provider "aws" {
   }
 }
 
+# Cross-account provider for Route53 (when zone is in different account)
+# With route53_role_arn empty, this behaves as the default same-account provider.
+provider "aws" {
+  alias  = "route53"
+  region = var.region
+
+  default_tags {
+    tags = local.common_tags
+  }
+
+  # Assume role if route53_role_arn is provided (cross-account)
+  assume_role {
+    role_arn     = var.route53_role_arn != "" ? var.route53_role_arn : null
+    session_name = var.route53_role_arn != "" ? "tofu-route53-${var.environment}" : null
+  }
+}
+
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
@@ -551,7 +568,7 @@ resource "aws_iam_role_policy" "kubecost" {
       ],
       # CUR bucket access - only if CUR is enabled (bucket exists)
       # Using for expression to ensure consistent types when condition is false
-      [for bucket in (local.cur_bucket_name != "" ? [local.cur_bucket_name] : []) : {
+      [for bucket in(local.cur_bucket_name != "" ? [local.cur_bucket_name] : []) : {
         Sid    = "CURBucketAccess"
         Effect = "Allow"
         Action = [
@@ -563,7 +580,7 @@ resource "aws_iam_role_policy" "kubecost" {
           "arn:aws:s3:::${bucket}/*"
         ]
       }],
-      [for _ in (local.cur_bucket_name != "" ? [1] : []) : {
+      [for _ in(local.cur_bucket_name != "" ? [1] : []) : {
         Sid    = "AthenaQueryAccess"
         Effect = "Allow"
         Action = [
@@ -573,7 +590,7 @@ resource "aws_iam_role_policy" "kubecost" {
         ]
         Resource = "*"
       }],
-      [for _ in (local.cur_bucket_name != "" ? [1] : []) : {
+      [for _ in(local.cur_bucket_name != "" ? [1] : []) : {
         Sid    = "GlueCatalogAccess"
         Effect = "Allow"
         Action = [
@@ -723,4 +740,65 @@ module "auto_shutdown" {
   tags              = local.common_tags
 
   depends_on = [module.eks]
+}
+
+# =============================================================================
+# Route53 DNS Management (Optional)
+# =============================================================================
+# Automatically creates/updates DNS record pointing to the load balancer and
+# the ACM validation records. When enabled, destroy/recreate cycles will
+# automatically update DNS. Supports cross-account Route53 via route53_role_arn
+# (leave empty for a same-account zone).
+
+# Look up the Route53 hosted zone (uses cross-account provider)
+data "aws_route53_zone" "main" {
+  count    = var.manage_route53_dns ? 1 : 0
+  provider = aws.route53
+  name     = var.route53_zone_name
+}
+
+# Read the proxy-public service to get the load balancer hostname
+data "kubernetes_service" "proxy_public" {
+  count = var.manage_route53_dns && var.enable_jupyterhub ? 1 : 0
+
+  metadata {
+    name      = "proxy-public"
+    namespace = "daskhub"
+  }
+
+  depends_on = [module.helm]
+}
+
+# Create the DNS record pointing to the load balancer
+# Using CNAME instead of Alias to avoid needing to look up NLB zone ID
+resource "aws_route53_record" "jupyterhub" {
+  count    = var.manage_route53_dns && var.enable_jupyterhub ? 1 : 0
+  provider = aws.route53
+
+  zone_id         = data.aws_route53_zone.main[0].zone_id
+  name            = var.domain_name
+  type            = "CNAME"
+  ttl             = 300
+  records         = [data.kubernetes_service.proxy_public[0].status[0].load_balancer[0].ingress[0].hostname]
+  allow_overwrite = true
+}
+
+# Also create the ACM validation record(s) when validating via Route53
+resource "aws_route53_record" "acm_validation" {
+  for_each = var.manage_route53_dns && var.enable_acm ? {
+    for dvo in module.acm[0].domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  } : {}
+
+  provider = aws.route53
+
+  zone_id         = data.aws_route53_zone.main[0].zone_id
+  name            = each.value.name
+  type            = each.value.type
+  ttl             = 60
+  records         = [each.value.record]
+  allow_overwrite = true
 }

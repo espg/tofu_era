@@ -6,7 +6,7 @@
 environment  = "cae-dev"
 region       = "us-west-2"
 cluster_name = "jupyterhub"
-domain_name  = "cae-dev.rocktalus.com"
+domain_name  = "cae-dev.geopotential.org"
 admin_email  = "refuge@rocktalus.com"
 owner_email  = "refuge@rocktalus.com"
 cost_center  = "cae-dev"
@@ -32,15 +32,21 @@ cluster_admin_users = [
 # Kubernetes
 kubernetes_version = "1.34"
 
-# ACM Certificate - Manual DNS validation (no Route53)
+# ACM Certificate - Automated DNS validation via Route53 (same-account zone)
 enable_acm          = true
 acm_enable_wildcard = false
-acm_auto_validate   = false # Manually add DNS validation records
+acm_auto_validate   = true # Route53 creates validation records automatically
+
+# Route53 DNS Management - auto-creates/updates DNS + ACM validation on apply
+# Zone must already exist in this account (992398409787); role_arn empty = same-account
+manage_route53_dns = true
+route53_zone_name  = "geopotential.org"
+route53_role_arn   = ""
 
 # Network Configuration
-vpc_cidr                 = "10.6.0.0/16" # Different CIDR for dev
-enable_nat_gateway       = true
-single_nat_gateway       = true
+vpc_cidr                   = "10.6.0.0/16" # Different CIDR for dev
+enable_nat_gateway         = true
+single_nat_gateway         = true
 pin_main_nodes_single_az   = true # All nodes in single AZ (matches cae)
 pin_system_nodes_single_az = true # Prevents hub PVC/node zone affinity conflicts
 pin_user_nodes_single_az   = true

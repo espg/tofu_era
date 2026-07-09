@@ -20,6 +20,11 @@ output "dns_validation_records" {
   value       = local.validation_options
 }
 
+output "domain_validation_options" {
+  description = "Domain validation options for Route53 automation"
+  value       = aws_acm_certificate.cert.domain_validation_options
+}
+
 output "validation_instructions" {
   description = "Instructions for manual DNS validation"
   value = var.auto_validate ? "Certificate validation is automatic." : <<-EOT
