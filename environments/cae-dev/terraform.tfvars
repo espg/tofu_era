@@ -16,6 +16,16 @@ admin_users = [
   "refuge@rocktalus.com"
 ]
 
+# Access control: explicit JupyterHub allowlist (defense-in-depth on top of
+# Cognito pool membership + admin-only signup). With allow_all_users = false,
+# ONLY these emails (plus admin_users) may log in, even if a user somehow
+# exists in the Cognito pool.
+allow_all_users = false
+allowed_users = [
+  "refuge@rocktalus.com",
+  "shane.grigsby@gmail.com",
+]
+
 # EKS Cluster Access
 # GitHub Actions gets access via bootstrap_cluster_creator_admin_permissions
 # (automatically granted when it creates the cluster - no explicit entry needed)

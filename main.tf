@@ -123,7 +123,6 @@ locals {
 
   # Extract secrets
   cognito_client_secret = try(data.sops_file.secrets.data["cognito.client_secret"], "")
-  github_token          = try(data.sops_file.secrets.data["github.token"], "")
   github_client_id      = try(data.sops_file.secrets.data["github.client_id"], "")
   github_client_secret  = try(data.sops_file.secrets.data["github.client_secret"], "")
 
@@ -381,8 +380,10 @@ module "helm" {
   cognito_userdata_url  = local.cognito_userdata_url
   cognito_logout_url    = local.cognito_logout_url
 
-  # Admin users
-  admin_users = var.admin_users
+  # Admin users and access control
+  admin_users     = var.admin_users
+  allow_all_users = var.allow_all_users
+  allowed_users   = var.allowed_users
 
   # Deployment type
   enable_jupyterhub = var.enable_jupyterhub

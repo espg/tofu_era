@@ -334,12 +334,6 @@ variable "use_ecr_pull_through_cache" {
   default     = true
 }
 
-variable "github_username" {
-  description = "GitHub username for ECR pull-through cache authentication. Used with github.token from SOPS secrets."
-  type        = string
-  default     = "espg" # Default to repo owner
-}
-
 # User Resource Limits
 variable "user_cpu_guarantee" {
   description = "CPU cores guaranteed per user"
@@ -598,6 +592,19 @@ variable "default_url" {
   description = "Default URL when user opens JupyterHub (e.g., /lab, /vscode, /tree)"
   type        = string
   default     = "/lab"
+}
+
+# Access Control
+variable "allow_all_users" {
+  description = "Allow any authenticated user to access the hub. Set false to enforce the allowed_users allowlist (defense-in-depth on top of Cognito pool membership)."
+  type        = bool
+  default     = true
+}
+
+variable "allowed_users" {
+  description = "Explicit allowlist of usernames (emails) permitted to log in when allow_all_users is false. admin_users are always allowed."
+  type        = list(string)
+  default     = []
 }
 
 variable "enable_continuous_image_puller" {

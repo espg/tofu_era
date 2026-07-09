@@ -125,6 +125,12 @@ variable "allow_all_users" {
   default     = true
 }
 
+variable "allowed_users" {
+  description = "Explicit allowlist of usernames (emails) permitted to log in when allow_all_users is false. admin_users are always allowed."
+  type        = list(string)
+  default     = []
+}
+
 variable "cognito_enabled" {
   description = "Enable Cognito authentication"
   type        = bool

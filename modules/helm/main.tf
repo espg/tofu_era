@@ -230,8 +230,9 @@ resource "helm_release" "daskhub" {
           # No tolerations needed - system nodes don't have taints
           config = {
             Authenticator = {
-              allow_all   = var.allow_all_users
-              admin_users = var.admin_users
+              allow_all     = var.allow_all_users
+              admin_users   = var.admin_users
+              allowed_users = var.allowed_users
             }
             # KubeSpawner Configuration
             # Fix for terminal spawning issue - allowPrivilegeEscalation must be true for terminals to work

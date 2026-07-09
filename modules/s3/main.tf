@@ -162,4 +162,10 @@ resource "aws_cur_report_definition" "kubecost" {
   # Refresh mode
   refresh_closed_reports = true
   report_versioning      = "OVERWRITE_REPORT"
+
+  # The CUR service verifies it can write to the bucket at creation time, so the
+  # bucket policy granting billingreports.amazonaws.com must exist first. Without
+  # this, OpenTofu may create the report before the policy -> "Failed to verify
+  # customer bucket permission".
+  depends_on = [aws_s3_bucket_policy.cur]
 }
