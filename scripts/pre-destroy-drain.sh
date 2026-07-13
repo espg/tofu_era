@@ -59,8 +59,15 @@ if aws eks describe-cluster --region "$REGION" --name "$CLUSTER" >/dev/null 2>&1
     # so we can wait for their actual deletion afterward.
     VOL_IDS=$(kubectl get pv -o jsonpath='{range .items[?(@.spec.csi.driver=="ebs.csi.aws.com")]}{.spec.csi.volumeHandle}{"\n"}{end}' 2>/dev/null || true)
 
-    echo "[drain] stopping singleuser servers so their PVCs can be released"
-    kubectl delete pods -A -l component=singleuser-server --wait=true --timeout=3m --ignore-not-found || true
+    # Every pod holding a PVC must be gone before we delete PVCs, or PVC-protection
+    # keeps the claim Terminating and its EBS volume never reclaims. This means the
+    # hub Deployment (holds hub-db-dir) and dask/scheduler controllers, PLUS the
+    # naked KubeSpawner singleuser pods (bare pods, not backed by a controller).
+    echo "[drain] removing daskhub workloads so their PVCs release (hub-db + user homes)"
+    kubectl delete deployment,statefulset,daemonset,replicaset,job --all -n daskhub --ignore-not-found --wait=false || true
+    kubectl delete pods -A -l component=singleuser-server --ignore-not-found --wait=false || true
+    echo "[drain] waiting for daskhub pods to terminate (so volumes detach)"
+    kubectl wait --for=delete pods --all -n daskhub --timeout=5m 2>/dev/null || true
 
     echo "[drain] deleting PVCs cluster-wide (reclaimPolicy=Delete removes the EBS volumes)"
     kubectl delete pvc -A --all --wait=true --timeout=5m --ignore-not-found || true
