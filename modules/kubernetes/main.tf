@@ -67,6 +67,11 @@ resource "kubernetes_storage_class_v1" "gp3" {
     type      = "gp3"
     fsType    = "ext4"
     encrypted = "true"
+    # Tag dynamically-provisioned EBS volumes with the cluster name so teardown
+    # verification (verify-clean-teardown.sh) can attribute any orphaned volume
+    # to this environment. The EBS CSI driver applies these at create time.
+    "tagSpecification_1" = "Application=jupyterhub"
+    "tagSpecification_2" = "KubernetesCluster=${var.cluster_name}"
   }
 }
 

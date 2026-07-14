@@ -101,11 +101,15 @@ destroy: init ## Destroy all resources (WARNING: Destructive!)
 	@echo -e "$(RED)WARNING: This will destroy all resources in environment: $(ENVIRONMENT)$(NC)"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
 	@read dummy
+	@echo -e "$(GREEN)Draining Kubernetes load balancers first (prevents orphaned NAT/VPC/ENIs)...$(NC)"
+	bash scripts/pre-destroy-drain.sh $(ENVIRONMENT) $(REGION)
 	@if [ "$(AUTO_APPROVE)" = "true" ]; then \
 		$(TERRAFORM_CMD) destroy -var-file=$(TFVARS) -auto-approve; \
 	else \
 		$(TERRAFORM_CMD) destroy -var-file=$(TFVARS); \
 	fi
+	@echo -e "$(GREEN)Verifying clean teardown (fails if any AWS resources remain)...$(NC)"
+	bash scripts/verify-clean-teardown.sh $(ENVIRONMENT) $(REGION)
 
 refresh: init ## Refresh state
 	@echo -e "$(GREEN)Refreshing $(TF_BINARY) state...$(NC)"
