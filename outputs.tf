@@ -146,7 +146,7 @@ output "login_instructions" {
           "  --region ${var.region}"
           ]) : join("\n", [
           "To access JupyterHub (HTTP mode):",
-          "1. Get load balancer URL: kubectl get svc -n jupyterhub proxy-public",
+          "1. Get load balancer URL: kubectl get svc -n daskhub proxy-public",
           "2. Navigate to: http://<load-balancer-url>",
           "3. Login with any username/password (dummy auth for testing)"
       ]))
@@ -309,16 +309,16 @@ aws eks update-kubeconfig --region ${var.region} --name ${module.eks.cluster_nam
 kubectl get nodes
 
 # Get JupyterHub pods
-kubectl get pods -n jupyterhub
+kubectl get pods -n daskhub
 
 # Get JupyterHub service
-kubectl get svc -n jupyterhub
+kubectl get svc -n daskhub
 
 # Follow JupyterHub logs
-kubectl logs -n jupyterhub deployment/hub -f
+kubectl logs -n daskhub deployment/hub -f
 
 # Get Load Balancer URL
-kubectl get svc -n jupyterhub proxy-public -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+kubectl get svc -n daskhub proxy-public -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
 EOT
 }
 
@@ -356,16 +356,16 @@ output "maintenance_commands" {
   description = "Useful maintenance commands"
   value       = <<EOT
 # Scale nodes to zero (cost savings)
-kubectl scale deployment hub -n jupyterhub --replicas=0
+kubectl scale deployment hub -n daskhub --replicas=0
 aws eks update-nodegroup-config --cluster-name ${module.eks.cluster_name} --nodegroup-name main --scaling-config minSize=0,maxSize=0,desiredSize=0
 
 # Restart JupyterHub
-kubectl rollout restart deployment/hub -n jupyterhub
+kubectl rollout restart deployment/hub -n daskhub
 
 # Clean up user pods
-kubectl delete pods -n jupyterhub -l component=singleuser-server
+kubectl delete pods -n daskhub -l component=singleuser-server
 
 # Update JupyterHub configuration
-helm upgrade jupyterhub jupyterhub/jupyterhub -n jupyterhub --values helm-values.yaml
+helm upgrade jupyterhub jupyterhub/jupyterhub -n daskhub --values helm-values.yaml
 EOT
 }
