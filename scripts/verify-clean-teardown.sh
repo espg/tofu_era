@@ -99,6 +99,20 @@ vols=$(aws ec2 describe-volumes --region "$REGION" \
   --query 'Volumes[?State!=`deleting`].VolumeId' --output text 2>/dev/null || true)
 if [ -n "$vols" ]; then echo "[verify] FAIL EBS volumes: $vols" >&2; fail=1; fi
 
+# Scratch S3 bucket -- the env's own bucket is "<cluster>-scratch-<account>",
+# tofu-managed with force_destroy, so destroy should delete it. Shared/existing
+# buckets (use_existing_s3_bucket=true, e.g. a prod bucket like cadcat-tmp) have a
+# different name and are never created here, so they are never flagged.
+ACCOUNT=$(aws sts get-caller-identity --query Account --output text 2>/dev/null || true)
+if [ -n "$ACCOUNT" ]; then
+  SCRATCH="${CLUSTER}-scratch-${ACCOUNT}"
+  echo "[verify] scratch bucket $SCRATCH"
+  if aws s3api head-bucket --bucket "$SCRATCH" 2>/dev/null; then
+    echo "[verify] FAIL scratch bucket still exists: $SCRATCH" >&2
+    fail=1
+  fi
+fi
+
 if [ "$fail" -ne 0 ]; then
   cat >&2 <<EOF
 
